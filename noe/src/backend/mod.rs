@@ -7,6 +7,8 @@ macro_rules! rounding {
         }
     };
 }
+
+pub(crate) mod conv2d;
 pub(crate) mod linear;
 
 // For the ReLU and ReLU6 activation functions
