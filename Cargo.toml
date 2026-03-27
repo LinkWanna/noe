@@ -1,0 +1,15 @@
+[workspace]
+members = [
+    "noe",
+    "noe-util",
+]
+resolver = "3"
+
+[workspace.package]
+authors = ["LinkWanna"]
+license = "MIT"
+version = "0.1.0"
+edition = "2024"
+
+keywords = ["AI", "Embedded"]
+categories = ["Embedded"]

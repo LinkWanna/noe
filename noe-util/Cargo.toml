@@ -1,0 +1,13 @@
+[package]
+name = "noe-util"
+workspace = ".."
+
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+version.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+truncate = []
