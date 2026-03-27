@@ -10,6 +10,7 @@ authors = ["LinkWanna"]
 license = "MIT"
 version = "0.1.0"
 edition = "2024"
+readme = "README.md"
 
-keywords = ["AI", "Embedded"]
+keywords = ["AI", "Embedded", "no-std"]
 categories = ["Embedded"]
