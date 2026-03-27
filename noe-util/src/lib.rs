@@ -12,7 +12,7 @@ mod utils;
 fn gen_declare() -> String {
     let mut body = String::new();
     body.push_str("#![allow(unused)]\n\n");
-    body.push_str("use nnom_rs::layer::*;\n\n");
+    body.push_str("use noe::layer::*;\n\n");
 
     body
 }

@@ -2,6 +2,7 @@
 members = [
     "noe",
     "noe-util",
+    "examples/mlp",
 ]
 resolver = "3"
 
