@@ -151,6 +151,27 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, format: Format) -> String {
                      memory_ptr({output_off}),\n);\n",
                 ));
             }
+            BatchNorm2d {
+                shape,
+                mul,
+                add,
+                out_shift,
+                activation,
+                off,
+            } => {
+                let (min, max) = activation_range(activation);
+
+                body.push_str(&format!(
+                    "const BATCHNORM2D_{idx}: BatchNorm2d = BatchNorm2d::new(\n    \
+                     {shape:?},\n    \
+                     include_bytes!(\"{folder}/{mul}\"),\n    \
+                     include_bytes!(\"{folder}/{add}\"),\n    \
+                     {out_shift},\n    \
+                     memory_ptr({off}),\n    \
+                     {min},\n    \
+                     {max},\n);\n",
+                ));
+            }
             Input { .. } | Output { .. } => {}
         }
 
@@ -175,6 +196,9 @@ fn gen_model_run(layers: &Vec<Layer>, format: Format) -> String {
             Linear { .. } => body.push_str(&format!("    LINEAR_{idx}.forward_{format}();")),
             Conv2D { .. } => body.push_str(&format!("    CONV2D_{idx}.forward_{format}();")),
             MaxPool2D { .. } => body.push_str(&format!("    MAXPOOL2D_{idx}.forward_{format}();")),
+            BatchNorm2d { .. } => {
+                body.push_str(&format!("    BATCHNORM2D_{idx}.forward_{format}();"))
+            }
             Output { size, off } => body.push_str(&format!(
                 "    unsafe {{ copy_nonoverlapping(memory_ptr({}), output.as_mut_ptr(), {}) }}\n",
                 off, size

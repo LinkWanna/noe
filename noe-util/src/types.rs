@@ -56,6 +56,14 @@ pub enum Layer {
         input_off: usize,
         output_off: usize,
     },
+    BatchNorm2d {
+        shape: (usize, usize, usize),
+        mul: String,
+        add: String,
+        out_shift: isize,
+        activation: Option<String>,
+        off: usize,
+    },
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy)]
