@@ -289,9 +289,8 @@ def dump(
     shape_map: dict[str, list[int | None]],
     init_map: dict[str, np.ndarray],
     planner: Planner,
-    dir: str = "params",
+    path: Path,
 ):
-    path = Path(dir)
     if not path.exists():
         path.mkdir(parents=True)
 
