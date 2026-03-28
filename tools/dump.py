@@ -153,7 +153,7 @@ def dump_maxpool(
             input_scale = attr.f
         elif attr.name == "output_scale":
             output_scale = attr.f
-    out_shift = int(np.log2(input_scale / output_scale)) if output_scale else 0
+    out_shift = int(np.log2(output_scale / input_scale)) if output_scale else 0
 
     return {
         "type": type,

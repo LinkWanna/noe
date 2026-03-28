@@ -52,7 +52,7 @@ pub enum Layer {
         stride: (usize, usize),
         padding: (usize, usize, usize, usize),
         dilation: (usize, usize),
-        out_shift: usize,
+        out_shift: isize,
         input_off: usize,
         output_off: usize,
     },

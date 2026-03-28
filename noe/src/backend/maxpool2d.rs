@@ -7,7 +7,7 @@ pub unsafe fn maxpool2d_chw_i8(
     kernel_size: (usize, usize),  // (kernel_h, kernel_w)
     stride: (usize, usize),       // (stride_h, stride_w)
     padding: (usize, usize),      // (pad_h, pad_w)
-    out_shift: usize,
+    out_shift: isize,
 ) {
     let ch = channel;
     let (in_h, in_w) = (input_shape.0, input_shape.1);
@@ -42,7 +42,13 @@ pub unsafe fn maxpool2d_chw_i8(
                 }
 
                 let output_idx = off_c + (oh * out_w) + ow;
-                let out_val = (max_val as isize) << out_shift;
+                let out_val = if out_shift > 0 {
+                    (max_val as isize) >> out_shift
+                } else if out_shift < 0 {
+                    (max_val as isize) << (-out_shift)
+                } else {
+                    max_val as isize
+                };
                 let clamped = out_val.clamp(-127, 127) as i8;
                 unsafe { *output.add(output_idx) = clamped }
             }

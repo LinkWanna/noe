@@ -9,7 +9,7 @@ pub struct MaxPool2d {
     stride: (usize, usize),
     padding: (usize, usize),
     _dilation: (usize, usize),
-    out_shift: usize,
+    out_shift: isize,
     input: *const i8,
     output: *mut i8,
 }
@@ -23,7 +23,7 @@ impl MaxPool2d {
         stride: (usize, usize),
         padding: (usize, usize, usize, usize),
         dilation: (usize, usize),
-        out_shift: usize,
+        out_shift: isize,
         input: *const i8,
         output: *mut i8,
     ) -> Self {
