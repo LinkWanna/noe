@@ -172,6 +172,33 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, format: Format) -> String {
                      {max},\n);\n",
                 ));
             }
+            Add {
+                A_shape,
+                B_shape,
+                output_shape,
+                B_shift,
+                out_shift,
+                activation,
+                A_off,
+                B_off,
+                output_off,
+            } => {
+                let (min, max) = activation_range(activation);
+
+                body.push_str(&format!(
+                    "const ADD_{idx}: Add = Add::new(\n    \
+                     {A_shape:?},\n    \
+                     {B_shape:?},\n    \
+                     {output_shape:?},\n    \
+                     {B_shift},\n    \
+                     {out_shift},\n    \
+                     memory_ptr({A_off}),\n    \
+                     memory_ptr({B_off}),\n    \
+                     memory_ptr({output_off}),\n    \
+                     {min},\n    \
+                     {max},\n);\n",
+                ));
+            }
             Input { .. } | Output { .. } => {}
         }
 
@@ -199,6 +226,7 @@ fn gen_model_run(layers: &Vec<Layer>, format: Format) -> String {
             BatchNorm2d { .. } => {
                 body.push_str(&format!("    BATCHNORM2D_{idx}.forward_{format}();"))
             }
+            Add { .. } => body.push_str(&format!("    ADD_{idx}.forward_{format}();")),
             Output { size, off } => body.push_str(&format!(
                 "    unsafe {{ copy_nonoverlapping(memory_ptr({}), output.as_mut_ptr(), {}) }}\n",
                 off, size

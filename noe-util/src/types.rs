@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -63,6 +64,17 @@ pub enum Layer {
         out_shift: isize,
         activation: Option<String>,
         off: usize,
+    },
+    Add {
+        A_shape: (usize, usize, usize),
+        B_shape: (usize, usize, usize),
+        output_shape: (usize, usize, usize),
+        B_shift: usize,
+        out_shift: usize,
+        activation: Option<String>,
+        A_off: usize,
+        B_off: usize,
+        output_off: usize,
     },
 }
 
