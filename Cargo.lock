@@ -10,7 +10,7 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "lenet"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "noe",
  "noe-util",
@@ -24,7 +24,7 @@ checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 
 [[package]]
 name = "mlp"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "noe",
  "noe-util",
@@ -32,11 +32,11 @@ dependencies = [
 
 [[package]]
 name = "noe"
-version = "0.2.0"
+version = "0.2.1"
 
 [[package]]
 name = "noe-util"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "pathdiff",
  "serde",
