@@ -6,6 +6,7 @@ pub mod batchnorm2d;
 pub mod conv1d;
 pub mod conv2d;
 pub mod linear;
+pub mod maxpool1d;
 pub mod maxpool2d;
 
 pub use add::*;
@@ -13,6 +14,7 @@ pub use batchnorm2d::*;
 pub use conv1d::*;
 pub use conv2d::*;
 pub use linear::*;
+pub use maxpool1d::*;
 pub use maxpool2d::*;
 
 pub trait Module {
