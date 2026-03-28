@@ -72,6 +72,46 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, format: Format) -> String {
                     }
                 ));
             }
+            Conv1D {
+                input_shape,
+                output_shape,
+                weight,
+                bias,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                groups,
+                activation,
+                out_shift,
+                input_off,
+                output_off,
+            } => {
+                let (min, max) = activation_range(activation);
+
+                body.push_str(&format!(
+                    "const CONV1D_{idx}: Conv1d = Conv1d::new(\n    \
+                     include_bytes!(\"{folder}/{weight}\"),\n    \
+                     {},\n    \
+                     {input_shape:?},\n    \
+                     {output_shape:?},\n    \
+                     {kernel_size},\n    \
+                     {stride},\n    \
+                     {padding:?},\n    \
+                     {dilation},\n    \
+                     {groups},\n    \
+                     {out_shift},\n    \
+                     memory_ptr({input_off}),\n    \
+                     memory_ptr({output_off}),\n    \
+                     {min},\n    \
+                     {max},\n);\n",
+                    if let Some(bias_path) = bias {
+                        format!("Some(include_bytes!(\"{folder}/{bias_path}\"))")
+                    } else {
+                        "None".to_string()
+                    }
+                ));
+            }
             Conv2D {
                 input_shape,
                 output_shape,
@@ -221,6 +261,7 @@ fn gen_model_run(layers: &Vec<Layer>, format: Format) -> String {
                 "    unsafe {{ copy_nonoverlapping(input.as_ptr(), memory_ptr({off}), {size}) }};\n"
             )),
             Linear { .. } => body.push_str(&format!("    LINEAR_{idx}.forward_{format}();")),
+            Conv1D { .. } => body.push_str(&format!("    CONV1D_{idx}.forward_{format}();")),
             Conv2D { .. } => body.push_str(&format!("    CONV2D_{idx}.forward_{format}();")),
             MaxPool2D { .. } => body.push_str(&format!("    MAXPOOL2D_{idx}.forward_{format}();")),
             BatchNorm2d { .. } => {

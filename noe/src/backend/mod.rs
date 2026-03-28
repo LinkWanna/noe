@@ -10,6 +10,7 @@ macro_rules! rounding {
 
 pub(crate) mod add;
 pub(crate) mod batchnorm2d;
+pub(crate) mod conv1d;
 pub(crate) mod conv2d;
 pub(crate) mod linear;
 pub(crate) mod maxpool2d;
