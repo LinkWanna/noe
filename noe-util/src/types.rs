@@ -30,6 +30,32 @@ pub enum Layer {
         input_off: usize,
         output_off: usize,
     },
+    Conv2D {
+        input_shape: (usize, usize, usize),
+        output_shape: (usize, usize, usize),
+        weight: String,
+        bias: Option<String>,
+        kernel_size: (usize, usize),
+        stride: (usize, usize),
+        padding: (usize, usize, usize, usize),
+        dilation: (usize, usize),
+        groups: usize,
+        out_shift: usize,
+        activation: Option<String>,
+        input_off: usize,
+        output_off: usize,
+    },
+    MaxPool2D {
+        input_shape: (usize, usize, usize),
+        output_shape: (usize, usize, usize),
+        kernel_size: (usize, usize),
+        stride: (usize, usize),
+        padding: (usize, usize, usize, usize),
+        dilation: (usize, usize),
+        out_shift: usize,
+        input_off: usize,
+        output_off: usize,
+    },
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy)]

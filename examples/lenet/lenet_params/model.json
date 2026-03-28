@@ -1,0 +1,105 @@
+{
+    "memory": 4320,
+    "format": "CHW",
+    "layers": [
+        {
+            "type": "input",
+            "size": 784,
+            "off": 3456
+        },
+        {
+            "type": "conv2d",
+            "input_shape": [1, 28, 28],
+            "output_shape": [6, 24, 24],
+            "weight": "features_features_0_weight_quant_export_handler_Constant_1_output_0.bin",
+            "bias": "features_features_0_bias_quant_export_handler_Constant_output_0.bin",
+            "kernel_size": [5, 5],
+            "stride": [1, 1],
+            "padding": [0, 0, 0, 0],
+            "dilation": [1, 1],
+            "groups": 1,
+            "out_shift": 8,
+            "activation": "Relu",
+            "input_off": 3456,
+            "output_off": 0
+        },
+        {
+            "type": "maxpool2d",
+            "input_shape": [6, 24, 24],
+            "output_shape": [6, 12, 12],
+            "kernel_size": [2, 2],
+            "stride": [2, 2],
+            "padding": [0, 0, 0, 0],
+            "dilation": [1, 1],
+            "out_shift": 1,
+            "input_off": 0,
+            "output_off": 3456
+        },
+        {
+            "type": "conv2d",
+            "input_shape": [6, 12, 12],
+            "output_shape": [16, 8, 8],
+            "weight": "features_features_3_weight_quant_export_handler_Constant_output_0.bin",
+            "bias": "features_features_3_bias_quant_export_handler_Constant_output_0.bin",
+            "kernel_size": [5, 5],
+            "stride": [1, 1],
+            "padding": [0, 0, 0, 0],
+            "dilation": [1, 1],
+            "groups": 1,
+            "out_shift": 8,
+            "activation": "Relu",
+            "input_off": 3456,
+            "output_off": 472
+        },
+        {
+            "type": "maxpool2d",
+            "input_shape": [16, 8, 8],
+            "output_shape": [16, 4, 4],
+            "kernel_size": [2, 2],
+            "stride": [2, 2],
+            "padding": [0, 0, 0, 0],
+            "dilation": [1, 1],
+            "out_shift": 0,
+            "input_off": 472,
+            "output_off": 216
+        },
+        {
+            "type": "linear",
+            "in_features": 256,
+            "out_features": 120,
+            "weight": "classifier_classifier_1_weight_quant_export_handler_Constant_output_0.bin",
+            "bias": "classifier_classifier_1_bias_quant_export_handler_Constant_output_0.bin",
+            "out_shift": 9,
+            "activation": "Relu",
+            "input_off": 216,
+            "output_off": 96
+        },
+        {
+            "type": "linear",
+            "in_features": 120,
+            "out_features": 84,
+            "weight": "classifier_classifier_3_weight_quant_export_handler_Constant_output_0.bin",
+            "bias": "classifier_classifier_3_bias_quant_export_handler_Constant_output_0.bin",
+            "out_shift": 8,
+            "activation": "Relu",
+            "input_off": 96,
+            "output_off": 12
+        },
+        {
+            "type": "linear",
+            "in_features": 84,
+            "out_features": 10,
+            "weight": "classifier_classifier_5_weight_quant_export_handler_Constant_output_0.bin",
+            "bias": "classifier_classifier_5_bias_quant_export_handler_Constant_output_0.bin",
+            "out_shift": 8,
+            "activation": null,
+            "input_off": 12,
+            "output_off": 0
+        },
+        {
+            "type": "output",
+            "size": 10,
+            "off": 0
+        }
+    ]
+}
