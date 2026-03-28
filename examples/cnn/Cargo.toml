@@ -1,0 +1,14 @@
+[package]
+name = "cnn"
+authors.workspace = true
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+noe = { path = "../../noe" }
+
+[build-dependencies]
+noe-util = { path = "../../noe-util" }

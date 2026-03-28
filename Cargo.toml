@@ -4,6 +4,7 @@ members = [
     "noe-util",
     "examples/mlp",
     "examples/lenet",
+    "examples/cnn",
 ]
 resolver = "3"
 
