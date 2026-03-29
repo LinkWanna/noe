@@ -152,6 +152,36 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, format: Format) -> String {
                     }
                 ));
             }
+            MaxPool1D {
+                input_shape,
+                output_shape,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                out_shift,
+                input_off,
+                output_off,
+            } => {
+                let (channel, input_shape, output_shape) = if format == Format::CHW {
+                    (input_shape.0, input_shape.1, output_shape.1)
+                } else {
+                    (input_shape.1, input_shape.0, output_shape.0)
+                };
+                body.push_str(&format!(
+                    "const MAXPOOL1D_{idx}: MaxPool1d = MaxPool1d::new(\n    \
+                     {input_shape:?},\n    \
+                     {output_shape:?},\n    \
+                     {channel},\n    \
+                     {kernel_size},\n    \
+                     {stride},\n    \
+                     {padding:?},\n    \
+                     {dilation},\n    \
+                     {out_shift},\n    \
+                     memory_ptr({input_off}),\n    \
+                     memory_ptr({output_off}),\n);\n",
+                ));
+            }
             MaxPool2D {
                 input_shape,
                 output_shape,
@@ -263,6 +293,7 @@ fn gen_model_run(layers: &Vec<Layer>, format: Format) -> String {
             Linear { .. } => body.push_str(&format!("    LINEAR_{idx}.forward_{format}();")),
             Conv1D { .. } => body.push_str(&format!("    CONV1D_{idx}.forward_{format}();")),
             Conv2D { .. } => body.push_str(&format!("    CONV2D_{idx}.forward_{format}();")),
+            MaxPool1D { .. } => body.push_str(&format!("    MAXPOOL1D_{idx}.forward_{format}();")),
             MaxPool2D { .. } => body.push_str(&format!("    MAXPOOL2D_{idx}.forward_{format}();")),
             BatchNorm2d { .. } => {
                 body.push_str(&format!("    BATCHNORM2D_{idx}.forward_{format}();"))

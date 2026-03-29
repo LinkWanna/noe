@@ -61,6 +61,17 @@ pub enum Layer {
         input_off: usize,
         output_off: usize,
     },
+    MaxPool1D {
+        input_shape: (usize, usize),
+        output_shape: (usize, usize),
+        kernel_size: usize,
+        stride: usize,
+        padding: (usize, usize),
+        dilation: usize,
+        out_shift: isize,
+        input_off: usize,
+        output_off: usize,
+    },
     MaxPool2D {
         input_shape: (usize, usize, usize),
         output_shape: (usize, usize, usize),

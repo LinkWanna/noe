@@ -11,6 +11,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "gesture"
+version = "0.3.0"
+dependencies = [
+ "noe",
+ "noe-util",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"

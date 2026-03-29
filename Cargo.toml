@@ -5,11 +5,12 @@ members = [
     "examples/mlp",
     "examples/lenet",
     "examples/cnn",
+    "examples/gesture",
 ]
 resolver = "3"
 
 [workspace.package]
-authors = ["LinkWanna"]
+authors = ["LinkWanna <lillluckenwp590@gmail.com>"]
 license = "MIT"
 version = "0.3.0"
 edition = "2024"
