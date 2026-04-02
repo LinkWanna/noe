@@ -6,6 +6,7 @@ members = [
     "examples/lenet",
     "examples/cnn",
     "examples/gesture-host",
+    "examples/gesture-stm32f103c8",
 ]
 resolver = "3"
 
