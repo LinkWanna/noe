@@ -7,13 +7,14 @@ members = [
     "examples/cnn",
     "examples/gesture-host",
     "examples/gesture-stm32f103c8",
+    "examples/kws",
 ]
 resolver = "3"
 
 [workspace.package]
 authors = ["LinkWanna <lillluckenwp590@gmail.com>"]
 license = "MIT"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 readme = "README.md"
 

@@ -7,13 +7,14 @@ packages = ["tools"]
 
 [project]
 name = "noe"
-version = "0.3.0"
+version = "0.3.1"
 description = "A quantization tool for embedded AI inference."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     # QAT
     "torch==2.8.0",
+    "torchaudio==2.8.0",
     "torchvision==0.23.0",
     "brevitas>=0.12.1",
     # quantization
@@ -30,6 +31,7 @@ dependencies = [
 [tool.uv.sources]
 torch = [{ index = "pytorch" }]
 torchvision = [{ index = "pytorch" }]
+torchaudio = [{ index = "pytorch" }]
 
 [[tool.uv.index]]
 name = "pytorch"
