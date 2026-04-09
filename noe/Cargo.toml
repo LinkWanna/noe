@@ -1,6 +1,7 @@
 [package]
 name = "noe"
 workspace = ".."
+description = "A AI inference library for embedded devices."
 
 edition.workspace = true
 authors.workspace = true
