@@ -18,5 +18,5 @@ version = "0.3.1"
 edition = "2024"
 readme = "README.md"
 
-keywords = ["AI", "Embedded", "no-std"]
-categories = ["Embedded"]
+keywords = ["AI", "Embedded", "fixed-point", "no-std"]
+categories = ["embedded", "no-std", "algorithms"]
