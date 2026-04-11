@@ -1,5 +1,9 @@
 use crate::{
-    backend::{ActivationParams, batchnorm2d::batchnorm2d_chw_i8},
+    DataLayout,
+    backend::{
+        ActivationParams,
+        batchnorm2d::{batchnorm2d_chw_i8, batchnorm2d_hwc_i8},
+    },
     layer::Module,
 };
 
@@ -22,10 +26,19 @@ impl BatchNorm2d {
         data: *mut i8,
         activation_min: isize,
         activation_max: isize,
+        layout: DataLayout,
     ) -> Self {
         // sanity check
+        let (ch, _, _) = match layout {
+            DataLayout::CHW => shape,
+            DataLayout::HWC => {
+                let (h, w, ch) = shape;
+                (ch, h, w)
+            }
+        };
+
         assert!(
-            mul.len() == shape.0 && add.len() == shape.0 * 2,
+            mul.len() == ch && add.len() == ch * 2,
             "Mul and Add arrays must have the same length as the number of channels"
         );
 
@@ -53,13 +66,22 @@ impl Module for BatchNorm2d {
                 self.mul.as_ptr().cast(),
                 self.add.as_ptr().cast(),
                 self.shape,
-                self.out_shift as usize,
+                self.out_shift,
                 self.activation,
             );
         }
     }
 
     fn forward_hwc(&self) {
-        todo!("Forward HWC is not implemented yet. Please use forward_chw for now.")
+        unsafe {
+            batchnorm2d_hwc_i8(
+                self.data,
+                self.mul.as_ptr().cast(),
+                self.add.as_ptr().cast(),
+                self.shape,
+                self.out_shift,
+                self.activation,
+            );
+        }
     }
 }
