@@ -75,6 +75,6 @@ impl Module for Add {
     }
 
     fn forward_hwc(&self) {
-        todo!("Forward HWC is not implemented yet. Please use forward_chw for now.")
+        self.forward_chw();
     }
 }

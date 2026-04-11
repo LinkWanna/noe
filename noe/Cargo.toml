@@ -11,4 +11,6 @@ keywords.workspace = true
 categories.workspace = true
 
 [features]
+default = ["truncate"]
+
 truncate = []

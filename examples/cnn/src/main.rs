@@ -38,5 +38,5 @@ fn eval(path: &str, num: u32) -> f32 {
 fn main() {
     let fasion_mnist_path = "/path/to/FashionMNIST";
     let accuracy = eval(fasion_mnist_path, 1000);
-    println!("Accuracy: {:.2}%", accuracy * 100.0); // Should be 90.1%
+    println!("Accuracy: {:.2}%", accuracy * 100.0);
 }

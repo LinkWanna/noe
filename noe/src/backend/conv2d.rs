@@ -15,12 +15,12 @@ pub unsafe fn conv2d_chw_i8(
     out_shift: isize,
     activation: ActivationParams,
 ) {
-    let (in_c, in_h, in_w) = (input_shape.0, input_shape.1, input_shape.2);
-    let (out_c, out_h, out_w) = (output_shape.0, output_shape.1, output_shape.2);
-    let (kernel_h, kernel_w) = (kernel_size.0, kernel_size.1);
-    let (pad_h, pad_w) = (padding.0, padding.1);
-    let (stride_h, stride_w) = (stride.0, stride.1);
-    let (dilation_h, dilation_w) = (dilation.0, dilation.1);
+    let (in_c, in_h, in_w) = input_shape;
+    let (out_c, out_h, out_w) = output_shape;
+    let (kernel_h, kernel_w) = kernel_size;
+    let (pad_h, pad_w) = padding;
+    let (stride_h, stride_w) = stride;
+    let (dilation_h, dilation_w) = dilation;
 
     let in_c_per_group = in_c / groups;
     let out_c_per_group = out_c / groups;
@@ -95,12 +95,12 @@ pub unsafe fn conv2d_hwc_i8(
     out_shift: isize,
     activation: ActivationParams,
 ) {
-    let (in_h, in_w, in_c) = (input_shape.0, input_shape.1, input_shape.2);
-    let (out_h, out_w, out_c) = (output_shape.0, output_shape.1, output_shape.2);
-    let (kernel_h, kernel_w) = (kernel_size.0, kernel_size.1);
-    let (pad_h, pad_w) = (padding.0, padding.1);
-    let (stride_h, stride_w) = (stride.0, stride.1);
-    let (dilation_h, dilation_w) = (dilation.0, dilation.1);
+    let (in_h, in_w, in_c) = input_shape;
+    let (out_h, out_w, out_c) = output_shape;
+    let (kernel_h, kernel_w) = kernel_size;
+    let (pad_h, pad_w) = padding;
+    let (stride_h, stride_w) = stride;
+    let (dilation_h, dilation_w) = dilation;
 
     let in_c_per_group = in_c / groups;
     let out_c_per_group = out_c / groups;

@@ -1,4 +1,8 @@
-use crate::{backend::maxpool2d::maxpool2d_chw_i8, layer::Module};
+use crate::{
+    DataLayout,
+    backend::maxpool2d::{maxpool2d_chw_i8, maxpool2d_hwc_i8},
+    layer::Module,
+};
 
 #[derive(Debug)]
 pub struct MaxPool2d {
@@ -26,12 +30,14 @@ impl MaxPool2d {
         out_shift: isize,
         input: *const i8,
         output: *mut i8,
+        _: DataLayout,
     ) -> Self {
         let (h_in, w_in) = input_shape;
         let (h_out, w_out) = output_shape;
         let (k_h, k_w) = kernel_size;
         let (p_t, p_l, p_b, p_r) = padding;
         let (s_h, s_w) = stride;
+
         assert!(
             p_t == p_b && p_l == p_r,
             "Padding should be symmetric (pad_h_top == pad_h_bottom and pad_w_left == pad_w_right)"
@@ -80,6 +86,18 @@ impl Module for MaxPool2d {
     }
 
     fn forward_hwc(&self) {
-        todo!("Forward HWC is not implemented yet. Please use forward_chw for now.")
+        unsafe {
+            maxpool2d_hwc_i8(
+                self.input,
+                self.output,
+                self.input_shape,
+                self.output_shape,
+                self.channel,
+                self.kernel_size,
+                self.stride,
+                self.padding,
+                self.out_shift,
+            )
+        }
     }
 }

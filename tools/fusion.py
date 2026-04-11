@@ -135,9 +135,9 @@ def fusion_linear(
     to_remove = []
     to_create = []
 
-    # 1. find Q -> DQ -> Gemm -> Act? -> (Q -> DQ)?
-    #          Weight ->
-    #           Bias? ->
+    # 1. find (Flatten) -> Q -> DQ -> Gemm -> Act? -> (Q -> DQ)?
+    #                       Weight ->
+    #                        Bias? ->
     for node in graph.node:
         gemm = node
         if gemm.op_type != "Gemm":
@@ -149,6 +149,12 @@ def fusion_linear(
         weight = out_map[gemm.input[1]]
         weight_q = out_map[weight.input[0]]
         bias = out_map.get(gemm.input[2], None) if len(gemm.input) > 2 else None
+
+        # catch the Flatten pattern before Gemm, which have the input shape
+        f_node = out_map.get(q_front.input[0], None)
+        flatten_input = None
+        if f_node is not None and f_node.op_type == "Flatten":
+            flatten_input = f_node.input[0]
 
         # mark these nodes for removal
         to_remove.extend([gemm, dq_front, q_front, weight, weight_q])
@@ -195,6 +201,7 @@ def fusion_linear(
             weight_scale=weight_scale,
             bias_scale=bias_scale,
             output_scale=output_scale,
+            flatten_input=flatten_input,
         )
 
         # create a new node to replace these nodes

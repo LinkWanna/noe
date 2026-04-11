@@ -1,7 +1,7 @@
 use std::fs;
 
 use crate::{
-    types::{Format, Layer, Model},
+    types::{DataLayout, Layer, Model},
     utils::activation_range,
 };
 
@@ -12,7 +12,8 @@ mod utils;
 fn gen_declare() -> String {
     let mut body = String::new();
     body.push_str("#![allow(unused)]\n\n");
-    body.push_str("use noe::layer::*;\n\n");
+    body.push_str("use noe::layer::*;\n");
+    body.push_str("use noe::DataLayout;\n\n");
 
     body
 }
@@ -35,7 +36,7 @@ fn gen_memory_pool(size: usize) -> String {
 }
 
 /// generate the layer declarations for the model
-fn gen_layers(layers: &Vec<Layer>, folder: &str, format: Format) -> String {
+fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
     use crate::types::Layer::*;
 
     let mut body = String::new();
@@ -144,7 +145,8 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, format: Format) -> String {
                      memory_ptr({input_off}),\n    \
                      memory_ptr({output_off}),\n    \
                      {min},\n    \
-                     {max},\n);\n",
+                     {max},\n    \
+                     DataLayout::{layout:?},\n);\n",
                     if let Some(bias_path) = bias {
                         format!("Some(include_bytes!(\"{folder}/{bias_path}\"))")
                     } else {
@@ -163,7 +165,7 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, format: Format) -> String {
                 input_off,
                 output_off,
             } => {
-                let (channel, input_shape, output_shape) = if format == Format::CHW {
+                let (channel, input_shape, output_shape) = if layout == DataLayout::CHW {
                     (input_shape.0, input_shape.1, output_shape.1)
                 } else {
                     (input_shape.1, input_shape.0, output_shape.0)
@@ -193,7 +195,7 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, format: Format) -> String {
                 input_off,
                 output_off,
             } => {
-                let (channel, input_shape, output_shape) = if format == Format::CHW {
+                let (channel, input_shape, output_shape) = if layout == DataLayout::CHW {
                     (
                         input_shape.0,
                         (input_shape.1, input_shape.2),
@@ -218,7 +220,8 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, format: Format) -> String {
                      {dilation:?},\n    \
                      {out_shift:?},\n    \
                      memory_ptr({input_off}),\n    \
-                     memory_ptr({output_off}),\n);\n",
+                     memory_ptr({output_off}),\n    \
+                     DataLayout::{layout:?},\n);\n",
                 ));
             }
             BatchNorm2d {
@@ -239,7 +242,8 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, format: Format) -> String {
                      {out_shift},\n    \
                      memory_ptr({off}),\n    \
                      {min},\n    \
-                     {max},\n);\n",
+                     {max},\n    \
+                     DataLayout::{layout:?},\n);\n",
                 ));
             }
             Add {
@@ -279,7 +283,7 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, format: Format) -> String {
 }
 
 /// generate the model run function for the model
-fn gen_model_run(layers: &Vec<Layer>, format: Format) -> String {
+fn gen_model_run(layers: &Vec<Layer>, layout: DataLayout) -> String {
     use crate::types::Layer::*;
     let mut body = String::new();
     body.push_str("pub fn model_run(input: &[i8], output: &mut [i8]) {\n");
@@ -290,15 +294,15 @@ fn gen_model_run(layers: &Vec<Layer>, format: Format) -> String {
             Input { size, off } => body.push_str(&format!(
                 "    unsafe {{ copy_nonoverlapping(input.as_ptr(), memory_ptr({off}), {size}) }};\n"
             )),
-            Linear { .. } => body.push_str(&format!("    LINEAR_{idx}.forward_{format}();")),
-            Conv1D { .. } => body.push_str(&format!("    CONV1D_{idx}.forward_{format}();")),
-            Conv2D { .. } => body.push_str(&format!("    CONV2D_{idx}.forward_{format}();")),
-            MaxPool1D { .. } => body.push_str(&format!("    MAXPOOL1D_{idx}.forward_{format}();")),
-            MaxPool2D { .. } => body.push_str(&format!("    MAXPOOL2D_{idx}.forward_{format}();")),
+            Linear { .. } => body.push_str(&format!("    LINEAR_{idx}.forward_{layout}();")),
+            Conv1D { .. } => body.push_str(&format!("    CONV1D_{idx}.forward_{layout}();")),
+            Conv2D { .. } => body.push_str(&format!("    CONV2D_{idx}.forward_{layout}();")),
+            MaxPool1D { .. } => body.push_str(&format!("    MAXPOOL1D_{idx}.forward_{layout}();")),
+            MaxPool2D { .. } => body.push_str(&format!("    MAXPOOL2D_{idx}.forward_{layout}();")),
             BatchNorm2d { .. } => {
-                body.push_str(&format!("    BATCHNORM2D_{idx}.forward_{format}();"))
+                body.push_str(&format!("    BATCHNORM2D_{idx}.forward_{layout}();"))
             }
-            Add { .. } => body.push_str(&format!("    ADD_{idx}.forward_{format}();")),
+            Add { .. } => body.push_str(&format!("    ADD_{idx}.forward_{layout}();")),
             Output { size, off } => body.push_str(&format!(
                 "    unsafe {{ copy_nonoverlapping(memory_ptr({}), output.as_mut_ptr(), {}) }}\n",
                 off, size
@@ -326,7 +330,7 @@ pub fn process_model(folder: &str, target: &str) {
 
     // 2. deserialize JSON to Model struct
     let config: Model = serde_json::from_str(&json).expect("Failed to parse JSON");
-    let format = config.format; // 布局格式
+    let layout = config.layout; // 布局格式
 
     // 3. generate declaration code
     body.push_str(&gen_declare());
@@ -335,10 +339,10 @@ pub fn process_model(folder: &str, target: &str) {
     body.push_str(&gen_memory_pool(config.memory));
 
     // 5. generate layer declarations
-    body.push_str(&gen_layers(&config.layers, &abs_folder, format));
+    body.push_str(&gen_layers(&config.layers, &abs_folder, layout));
 
     // 6. generate model run function
-    body.push_str(&gen_model_run(&config.layers, format));
+    body.push_str(&gen_model_run(&config.layers, layout));
 
     // 7. write the generated code to target file
     fs::write(abs_target, body).expect("Failed to write declaration file");

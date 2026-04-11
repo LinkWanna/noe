@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Model {
     pub memory: usize,
-    pub format: Format,
+    pub layout: DataLayout,
     pub layers: Vec<Layer>,
 }
 
@@ -105,16 +105,16 @@ pub enum Layer {
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Format {
+pub enum DataLayout {
     CHW,
     HWC,
 }
 
-impl fmt::Display for Format {
+impl fmt::Display for DataLayout {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Format::CHW => f.write_str("chw"),
-            Format::HWC => f.write_str("hwc"),
+            DataLayout::CHW => f.write_str("chw"),
+            DataLayout::HWC => f.write_str("hwc"),
         }
     }
 }

@@ -14,6 +14,7 @@ def dump_linear(
     init_map: dict[str, np.ndarray],
     planner: Planner,
     path: Path,
+    layout: str,
 ) -> dict:
     in_features = shape_map[node.input[0]][1]
     out_features = shape_map[node.output[0]][1]
@@ -23,6 +24,7 @@ def dump_linear(
         bias = node.input[2].strip("/").replace(".", "_").replace("/", "_") + ".bin"
 
     output_scale = None
+    flatten_input = None
     for attr in node.attribute:
         if attr.name == "input_scale":
             input_scale = attr.f
@@ -32,9 +34,18 @@ def dump_linear(
             output_scale = attr.f
         elif attr.name == "activation":
             activation = attr.s.decode("utf-8")
+        elif attr.name == "flatten_input":
+            flatten_input = attr.s.decode("utf-8")
     out_shift = int(np.log2(output_scale / (input_scale * weight_scale))) if output_scale else int(np.log2(1 / weight_scale))
 
     weight_data = init_map[node.input[1]]
+    if flatten_input and layout == "HWC":
+        c, h, w = shape_map[flatten_input][1:]  # NCHW -> CHW
+        assert c and h and w and out_features, "Flatten input shape must be fully defined for HWC layout"
+        assert c * h * w == in_features, f"Flatten input shape {c}*{h}*{w} does not match in_features {in_features}"
+        weight_data = weight_data.reshape(out_features, c, h, w)
+        weight_data = weight_data.transpose(0, 2, 3, 1)  # OIHW -> OHWI
+
     weight_data.tofile(path / weight)
     if len(node.input) > 2:
         bias_data = init_map[node.input[2]].astype(np.int16)
@@ -59,6 +70,7 @@ def dump_conv(
     init_map: dict[str, np.ndarray],
     planner: Planner,
     path: Path,
+    layout: str,
 ) -> dict:
     input_shape = shape_map[node.input[0]][1:]  # NCHW -> CHW
     output_shape = shape_map[node.output[0]][1:]  # NCHW -> CHW
@@ -100,6 +112,16 @@ def dump_conv(
     out_shift = int(np.log2(output_scale / (input_scale * weight_scale))) if output_scale else int(np.log2(1 / weight_scale))
 
     weight_data = init_map[node.input[1]]
+    if layout == "HWC":
+        if type == "conv1d":
+            input_shape = [input_shape[1], input_shape[0]]  # CW -> WC
+            output_shape = [output_shape[1], output_shape[0]]  # CW -> WC
+            weight_data = weight_data.transpose(0, 2, 1)  # OIW -> OWI
+        elif type == "conv2d":
+            input_shape = [input_shape[1], input_shape[2], input_shape[0]]  # CHW -> HWC
+            output_shape = [output_shape[1], output_shape[2], output_shape[0]]  # CHW -> HWC
+            weight_data = weight_data.transpose(0, 2, 3, 1)  # OIHW -> OHWI
+
     weight_data.tofile(path / weight)
     if len(node.input) > 2:
         bias_data = init_map[node.input[2]].astype(np.int16)
@@ -127,6 +149,7 @@ def dump_maxpool(
     node: NodeProto,
     shape_map: dict[str, list[int | None]],
     planner: Planner,
+    layout: str,
 ) -> dict:
     input_shape = shape_map[node.input[0]][1:]  # NCHW -> CHW
     output_shape = shape_map[node.output[0]][1:]  # NCHW -> CHW
@@ -155,6 +178,14 @@ def dump_maxpool(
             output_scale = attr.f
     out_shift = int(np.log2(output_scale / input_scale)) if output_scale else 0
 
+    if layout == "HWC":
+        if type == "maxpool1d":
+            input_shape = [input_shape[1], input_shape[0]]  # CW -> WC
+            output_shape = [output_shape[1], output_shape[0]]  # CW -> WC
+        elif type == "maxpool2d":
+            input_shape = [input_shape[1], input_shape[2], input_shape[0]]  # CHW -> HWC
+            output_shape = [output_shape[1], output_shape[2], output_shape[0]]  # CHW -> HWC
+
     return {
         "type": type,
         "input_shape": input_shape,
@@ -175,6 +206,7 @@ def dump_batchnorm(
     init_map: dict[str, np.ndarray],
     planner: Planner,
     path: Path,
+    layout: str,
 ) -> dict:
     input_shape = shape_map[node.input[0]][1:]  # NCHW -> CHW
     output_shape = shape_map[node.output[0]][1:]  # NCHW -> CHW
@@ -208,6 +240,12 @@ def dump_batchnorm(
     mul_data.tofile(path / mul)
     add_data = init_map[node.input[2]].astype(np.int16)
     add_data.tofile(path / add)
+
+    if layout == "HWC":
+        if type == "batchnorm1d":
+            input_shape = [input_shape[1], input_shape[0]]  # CW -> WC
+        elif type == "batchnorm2d":
+            input_shape = [input_shape[1], input_shape[2], input_shape[0]]  # CHW -> HWC
 
     return {
         "type": type,
@@ -262,6 +300,7 @@ def dump_globalavgpool(
     node: NodeProto,
     shape_map: dict[str, list[int | None]],
     planner: Planner,
+    layout: str,
 ) -> dict:
     input_shape = shape_map[node.input[0]][1:]  # NCHW -> CHW
     output_shape = shape_map[node.output[0]][1:]  # NCHW -> CHW
@@ -275,6 +314,9 @@ def dump_globalavgpool(
         type = "globalavgpool3d"
     else:
         raise ValueError(f"Unsupported global average pool input shape: {input_shape}")
+
+    if layout == "HWC":
+        input_shape = [input_shape[1], input_shape[2], input_shape[0]]  # CHW -> HWC
 
     return {
         "type": type,
@@ -290,6 +332,7 @@ def dump(
     init_map: dict[str, np.ndarray],
     planner: Planner,
     path: Path,
+    layout: str,
 ):
     if not path.exists():
         path.mkdir(parents=True)
@@ -301,17 +344,17 @@ def dump(
     layers.append({"type": "input", "size": planner.get_size(input[0]), "off": planner.get_offset(input[0])})
     for node in model.graph.node:
         if node.op_type == "FusedQuantLinear":
-            info = dump_linear(node, shape_map, init_map, planner, path)
+            info = dump_linear(node, shape_map, init_map, planner, path, layout)
         elif node.op_type == "FusedQuantConv":
-            info = dump_conv(node, shape_map, init_map, planner, path)
+            info = dump_conv(node, shape_map, init_map, planner, path, layout)
         elif node.op_type == "FusedQuantBatchNorm":
-            info = dump_batchnorm(node, shape_map, init_map, planner, path)
+            info = dump_batchnorm(node, shape_map, init_map, planner, path, layout)
         elif node.op_type == "FusedQuantAdd":
             info = dump_add(node, shape_map, init_map, planner)
         elif node.op_type == "MaxPool":
-            info = dump_maxpool(node, shape_map, planner)
+            info = dump_maxpool(node, shape_map, planner, layout)
         elif node.op_type == "GlobalAveragePool":
-            info = dump_globalavgpool(node, shape_map, planner)
+            info = dump_globalavgpool(node, shape_map, planner, layout)
         elif node.op_type in ["Flatten"]:
             continue  # Skip
         else:
@@ -325,7 +368,7 @@ def dump(
         json.dump(
             {
                 "memory": planner.memory,
-                "format": "CHW",
+                "layout": layout,
                 "layers": layers,
             },
             f,

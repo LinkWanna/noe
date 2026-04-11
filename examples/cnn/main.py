@@ -3,7 +3,6 @@ import logging
 from argparse import Namespace
 from pathlib import Path
 
-import onnx
 import torch
 from brevitas.export import export_onnx_qcdq
 from model.dataset import load_fashion_mnist
@@ -11,10 +10,7 @@ from model.net import QuantCNN
 from rich.logging import RichHandler
 from torch import nn, optim
 
-from tools.dump import dump
-from tools.fusion import fusion
-from tools.parser import onnx_parse
-from tools.planner import Planner
+from tools import quantize
 from tools.util import evaluate, train_one_epoch
 
 # current working directory of this script
@@ -88,23 +84,6 @@ def train(net: str, save_dir: Path, args: Namespace):
     logging.info(f"Model exported to ONNX format at {save_dir / f'{net}.onnx'}")
 
 
-def quantize(net: str, save_dir: Path):
-    model = onnx.load(save_dir / f"{net}.onnx")
-
-    # get shape info and initializers from the model, which may be used for fusion and dumping
-    shape_map, init_map = onnx_parse(model)
-
-    # perform operator fusion to optimize the model, which may modify the graph structure and initializers
-    model = fusion(model, init_map)
-
-    # create a memory planner to analyze tensor lifetimes and compute memory offsets, which may be used for dumping
-    planner = Planner(model, shape_map)
-
-    # dump the optimized model and memory plan to files, which may be used for code generation and execution
-    dump(model, shape_map, init_map, planner, cwd / f"{net}_params")
-    onnx.save(model, save_dir / f"{net}_fused.onnx")  # save the fused model for Netron visualization
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=5)
@@ -121,7 +100,7 @@ def main():
     save_dir.mkdir(parents=True, exist_ok=True)
 
     train(net, save_dir, args)
-    quantize(net, save_dir)
+    quantize(save_dir / f"{net}.onnx", cwd / f"{net}_params", layout="HWC")
 
 
 if __name__ == "__main__":
