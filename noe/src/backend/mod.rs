@@ -1,13 +1,3 @@
-macro_rules! rounding {
-    ($out_shift:expr) => {
-        if cfg!(not(feature = "truncate")) {
-            (1 << $out_shift) >> 1
-        } else {
-            0
-        }
-    };
-}
-
 pub(crate) mod add;
 pub(crate) mod batchnorm2d;
 pub(crate) mod conv1d;

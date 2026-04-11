@@ -1,4 +1,4 @@
-use crate::backend::ActivationParams;
+use crate::{backend::ActivationParams, basic::mat_vec_mul::mat_vec_mul_i8};
 
 /// safety: This function is unsafe because it dereferences raw pointers.
 /// The caller must ensure that the pointers are valid and point to memory
@@ -13,21 +13,16 @@ pub unsafe fn linear_i8(
     out_shift: isize,
     activation: ActivationParams,
 ) {
-    for o in 0..out_features {
-        let mut acc = if let Some(bias_ptr) = bias {
-            unsafe { *bias_ptr.add(o) as isize }
-        } else {
-            0
-        };
-        for i in 0..in_features {
-            let w = unsafe { *weight.add(o * in_features + i) } as isize;
-            let inp = unsafe { *input.add(i) } as isize;
-            acc += w * inp;
-        }
-
-        // 四舍五入右移
-        acc = (acc + rounding!(out_shift)) >> out_shift;
-        let out_val = acc.clamp(activation.min, activation.max) as i8;
-        unsafe { *output.add(o) = out_val }
+    unsafe {
+        mat_vec_mul_i8(
+            weight,
+            input,
+            bias,
+            output,
+            in_features,
+            out_features,
+            out_shift,
+            activation,
+        )
     }
 }
