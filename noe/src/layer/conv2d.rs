@@ -1,5 +1,9 @@
 use crate::{
-    backend::{ActivationParams, conv2d::conv2d_chw_i8},
+    DataLayout,
+    backend::{
+        ActivationParams,
+        conv2d::{conv2d_chw_i8, conv2d_hwc_i8},
+    },
     layer::Module,
 };
 
@@ -36,15 +40,34 @@ impl Conv2d {
         output: *mut i8,
         activation_min: isize,
         activation_max: isize,
+        layout: DataLayout,
     ) -> Self {
         // sanity checks
+        let (pt, pl, pb, pr) = (padding.0, padding.1, padding.2, padding.3);
+        let (kh, kw) = kernel_size;
+        let ((ic, ih, iw), (oc, oh, ow)) = match layout {
+            DataLayout::CHW => (input_shape, output_shape),
+            DataLayout::HWC => {
+                let (ih, iw, ic) = input_shape;
+                let (oh, ow, oc) = output_shape;
+                ((ic, ih, iw), (oc, oh, ow))
+            }
+        };
+
         assert!(
-            weight.len()
-                == (output_shape.0 * input_shape.0 * kernel_size.0 * kernel_size.1) / groups,
+            weight.len() == (oc * ic * kh * kw) / groups,
             "Weight length does not match expected size based on output channels, input channels, kernel size, and groups"
         );
         assert!(
-            padding.0 == padding.2 && padding.1 == padding.3,
+            (ih + pt + pb - kh) / stride.0 + 1 == oh,
+            "Output height does not match expected size based on input height, padding, kernel height, and stride"
+        );
+        assert!(
+            (iw + pl + pr - kw) / stride.1 + 1 == ow,
+            "Output width does not match expected size based on input width, padding, kernel width, and stride"
+        );
+        assert!(
+            pt == pb && pl == pr,
             "Padding should be symmetric (pad_h_top == pad_h_bottom and pad_w_left == pad_w_right)"
         );
 
@@ -93,6 +116,22 @@ impl Module for Conv2d {
     }
 
     fn forward_hwc(&self) {
-        todo!("Forward HWC is not implemented yet. Please use forward_chw for now.")
+        unsafe {
+            conv2d_hwc_i8(
+                self.input,
+                self.weight.as_ptr().cast(),
+                self.bias.map(|b| b.as_ptr().cast()),
+                self.output,
+                self.input_shape,
+                self.output_shape,
+                self.kernel_size,
+                self.stride,
+                self.padding,
+                self.dilation,
+                self.groups,
+                self.out_shift,
+                self.activation,
+            );
+        }
     }
 }
