@@ -142,6 +142,7 @@ def dump_conv(
         "activation": activation if activation else None,
         "input_off": planner.get_offset(node.input[0]),
         "output_off": planner.get_offset(node.output[0]),
+        "tmp_off": planner.get_offset(node.name),
     }
 
 

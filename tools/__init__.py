@@ -20,10 +20,10 @@ def quantize(path: Path, output: Path, layout: str):
     shape_map, init_map = onnx_parse(model)
 
     # perform operator fusion to optimize the model, which may modify the graph structure and initializers
-    model = fusion(model, init_map)
+    model = fusion(model, shape_map, init_map)
 
     # create a memory planner to analyze tensor lifetimes and compute memory offsets, which may be used for dumping
-    planner = Planner(model, shape_map)
+    planner = Planner(model, shape_map, layout)
 
     # dump the optimized model and memory plan to files, which may be used for code generation and execution
     dump(model, shape_map, init_map, planner, output, layout)

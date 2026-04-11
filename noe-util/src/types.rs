@@ -60,6 +60,7 @@ pub enum Layer {
         activation: Option<String>,
         input_off: usize,
         output_off: usize,
+        tmp_off: usize,
     },
     MaxPool1D {
         input_shape: (usize, usize),

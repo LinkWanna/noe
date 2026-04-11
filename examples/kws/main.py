@@ -86,12 +86,13 @@ def train(net: str, save_dir: Path, args: Namespace):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--dataset", type=str, default="/path/to/SpeechCommands")
+    parser.add_argument("--dataset", type=str, default="/path/to/FashionMNIST")
     parser.add_argument("--save-dir", type=str, default="model/output")
     parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint to resume from")
+    parser.add_argument("--skip-train", default=False, action="store_true", help="Whether to skip training")
     args = parser.parse_args()
 
     # get the current working directory of this script
@@ -99,8 +100,9 @@ def main():
     save_dir = Path(cwd / args.save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    train(net, save_dir, args)
-    quantize(save_dir / f"{net}.onnx", cwd / f"{net}_params", layout="CHW")
+    if not args.skip_train:
+        train(net, save_dir, args)
+    quantize(save_dir / f"{net}.onnx", cwd / f"{net}_params", layout="HWC")
 
 
 if __name__ == "__main__":

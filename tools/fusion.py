@@ -188,13 +188,14 @@ def fusion_linear(
                 input_scale = attr.f
             elif attr.name == "output_scale":
                 output_scale = attr.f
+        name = f"{gemm.name}_fused"
         weight_scale = init_map[weight.input[1]].item()
         bias_scale = init_map[bias.input[1]].item() if bias else None
         fused_node = helper.make_node(
             op_type="FusedQuantLinear",
             inputs=inputs,
             outputs=last_node.output,
-            name=f"{gemm.name}_fused",
+            name=name,
             # attrs
             activation=act.op_type if act else "",
             input_scale=input_scale,
@@ -219,6 +220,7 @@ def fusion_linear(
 
 def fusion_conv(
     graph: GraphProto,
+    shape_map: dict[str, list[int | None]],
     init_map: dict[str, np.ndarray],
     in_map: dict[str, NodeProto],
     out_map: dict[str, NodeProto],
@@ -267,21 +269,26 @@ def fusion_conv(
             inputs.append(bias.input[0])  # Conv 的 bias
 
         # Create a node to replace these nodes, assuming a custom op "FusedQuantConv" implements this behavior
+        name = f"{conv.name}_fused"
         weight_scale = init_map[weight.input[1]].item()
         bias_scale = init_map[bias.input[1]].item() if bias else None
-
         conv_attrs = {attr.name: helper.get_attribute_value(attr) for attr in conv.attribute}
+
         fused_node = helper.make_node(
             op_type="FusedQuantConv",
             inputs=inputs,
             outputs=last_node.output,
-            name=f"{conv.name}_fused",
+            name=name,
             # attrs
             activation=act.op_type if act else "",
             weight_scale=weight_scale,
             bias_scale=bias_scale,
             **conv_attrs,
         )
+
+        # infer cache for this ops
+        ic = shape_map[conv.input[0]][1]
+        shape_map[name] = [conv_attrs["kernel_shape"][0], conv_attrs["kernel_shape"][1], ic // conv_attrs["group"]]
 
         # Create a new node to replace these nodes
         to_create.append(fused_node)
@@ -359,13 +366,14 @@ def fusion_bn(
                 input_scale = attr.f
             elif attr.name == "output_scale":
                 output_scale = attr.f
+        name = f"{mul.name}_fused"
         mul_scale = init_map[mul_de.input[1]].item()
         add_scale = init_map[add_de.input[1]].item()
         fused_node = helper.make_node(
             op_type="FusedQuantBatchNorm",
             inputs=inputs,
             outputs=last_node.output,
-            name=f"{mul.name}_fused",
+            name=name,
             # attrs
             activation=act.op_type if act else "",
             input_scale=input_scale,
@@ -451,11 +459,12 @@ def fusion_add(
             q_front_B.input[0],  # Input B of Add
         ]
         output_scale = init_map[last_node.input[1]].item()
+        name = f"{add.name}_fused"
         fused_node = helper.make_node(
             op_type="FusedQuantAdd",
             inputs=inputs,
             outputs=last_node.output,
-            name=f"{add.name}_fused",
+            name=name,
             # attrs
             activation=act.op_type if act else "",
             input_A_scale=input_A_scale,
@@ -506,7 +515,7 @@ def fusion_gloabal_avgpool(
     graph.node.extend(to_create)
 
 
-def fusion(model: ModelProto, init_map: dict[str, np.ndarray]) -> ModelProto:
+def fusion(model: ModelProto, shape_map: dict[str, list[int | None]], init_map: dict[str, np.ndarray]) -> ModelProto:
     graph = model.graph
 
     # 建立索引：输出名/输入名 -> 节点 (用于快速向上回溯)
@@ -515,7 +524,7 @@ def fusion(model: ModelProto, init_map: dict[str, np.ndarray]) -> ModelProto:
 
     attach_scale(graph, init_map, in_map, out_map)
     fusion_linear(graph, init_map, in_map, out_map)
-    fusion_conv(graph, init_map, in_map, out_map)
+    fusion_conv(graph, shape_map, init_map, in_map, out_map)
     fusion_bn(graph, init_map, in_map, out_map)
     fusion_add(graph, init_map, in_map, out_map)
 

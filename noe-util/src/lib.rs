@@ -127,6 +127,7 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                 activation,
                 input_off,
                 output_off,
+                tmp_off,
             } => {
                 let (min, max) = activation_range(activation);
 
@@ -144,6 +145,7 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                      {out_shift},\n    \
                      memory_ptr({input_off}),\n    \
                      memory_ptr({output_off}),\n    \
+                     memory_ptr({tmp_off}),\n    \
                      {min},\n    \
                      {max},\n    \
                      DataLayout::{layout:?},\n);\n",

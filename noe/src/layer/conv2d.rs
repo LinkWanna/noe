@@ -21,6 +21,7 @@ pub struct Conv2d {
     out_shift: isize,
     input: *const i8,
     output: *mut i8,
+    tmp: *mut i8,
     activation: ActivationParams,
 }
 
@@ -38,6 +39,7 @@ impl Conv2d {
         out_shift: isize,
         input: *const i8,
         output: *mut i8,
+        tmp: *mut i8,
         activation_min: isize,
         activation_max: isize,
         layout: DataLayout,
@@ -89,6 +91,7 @@ impl Conv2d {
             out_shift,
             input,
             output,
+            tmp,
             activation,
         }
     }
@@ -122,6 +125,7 @@ impl Module for Conv2d {
                 self.weight.as_ptr().cast(),
                 self.bias.map(|b| b.as_ptr().cast()),
                 self.output,
+                self.tmp,
                 self.input_shape,
                 self.output_shape,
                 self.kernel_size,

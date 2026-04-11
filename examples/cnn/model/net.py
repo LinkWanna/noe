@@ -132,6 +132,7 @@ class QuantCNN(nn.Module):
                 kernel_size=3,
                 stride=1,
                 padding=1,
+                groups=2,
                 bias=True,
                 input_quant=act_quant,
                 weight_quant=weight_quant,

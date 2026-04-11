@@ -10,33 +10,42 @@ in_place_ops = {
 }
 
 
-def shading(model: ModelProto) -> dict[str, str]:
+def shading(model: ModelProto, shape_map: dict[str, list[int | None]], layout: str) -> dict[str, str]:
     """Assign colors to tensors in the model so that the same tensor shares the same color."""
     idx = 0
     colored: dict[str, str] = {}
 
     # Color the remaining nodes, ensuring the same tensor keeps the same color
     for node in model.graph.node:
+        input = node.input[0]
+        output = node.output[0]
         if node.op_type in in_place_ops:
-            if node.input[0] not in colored and node.output[0] not in colored:
-                colored[node.output[0]] = colored[node.input[0]] = f"Tensor_{idx}"
+            if input not in colored and output not in colored:
+                colored[output] = colored[input] = f"Tensor_{idx}"
                 idx += 1
             else:
-                if node.input[0] in colored and node.output[0] not in colored:
-                    colored[node.output[0]] = colored[node.input[0]]
-                elif node.output[0] in colored and node.input[0] not in colored:
-                    colored[node.input[0]] = colored[node.output[0]]
+                if input in colored and output not in colored:
+                    colored[output] = colored[input]
+                elif output in colored and input not in colored:
+                    colored[input] = colored[output]
                 # If both are already colored but with different colors, the model is inconsistent
-                elif colored[node.input[0]] != colored[node.output[0]]:
-                    raise ValueError(f"Conflict in coloring for {node.input[0]} and {node.output[0]}")
+                elif colored[input] != colored[output]:
+                    raise ValueError(f"Conflict in coloring for {input} and {output}")
 
-        if node.input[0] not in colored:
-            colored[node.input[0]] = f"Tensor_{idx}"
+        if input not in colored:
+            colored[input] = f"Tensor_{idx}"
             idx += 1
 
-        if node.output[0] not in colored:
-            colored[node.output[0]] = f"Tensor_{idx}"
+        if output not in colored:
+            colored[output] = f"Tensor_{idx}"
             idx += 1
+
+        if node.name in shape_map:  # some nodes have cache
+            if node.op_type == "FusedQuantConv" and layout == "CHW":
+                shape_map[node.name] = [0]  # when layout is CHW, Conv doesn't need cache
+            colored[node.name] = f"Tensor_{idx}"
+            idx += 1
+
     return colored
 
 
@@ -61,6 +70,9 @@ def lifetime_analysis(model: ModelProto, colored: dict[str, str]) -> dict[str, t
                 else:
                     start, end = lifetimes[color]
                     lifetimes[color] = (min(start, idx), max(end, idx))
+
+        if node.name in colored:
+            lifetimes[colored[node.name]] = (idx, idx)
 
     return lifetimes
 
@@ -132,16 +144,22 @@ def memory_solve(lifetimes: dict[str, tuple[int, int]], size_map: dict[str, int]
 
 
 class Planner:
-    def __init__(self, model: ModelProto, shape_map: dict[str, list[int | None]], align: int = 4):
+    def __init__(
+        self,
+        model: ModelProto,
+        shape_map: dict[str, list[int | None]],
+        layout: str,
+        align: int = 4,
+    ):
         logging.info("Memory planning started")
         # 1. Color tensors
-        self.colored = shading(model)
+        self.colored = shading(model, shape_map, layout)
         logging.debug("Colored tensors:")
         for name, color in self.colored.items():
             logging.debug(f"\t{name} -> {color}")
 
         # 2. Compute size of each tensor
-        self.size_map = {tensor: math.prod(shape_map[name]) for name, tensor in self.colored.items()}
+        self.size_map = {tensor: math.prod(shape_map.get(name, [0])) for name, tensor in self.colored.items()}
 
         # 3. Perform lifetime analysis
         self.lifetimes = lifetime_analysis(model, self.colored)
