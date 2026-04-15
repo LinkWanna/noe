@@ -11,7 +11,8 @@ mod utils;
 /// generate the declaration code for the model
 fn gen_declare() -> String {
     let mut body = String::new();
-    body.push_str("#![allow(unused)]\n\n");
+    body.push_str("#![allow(unused)]\n");
+    body.push_str("#![allow(static_mut_refs)]\n\n");
     body.push_str("use noe::layer::*;\n");
     body.push_str("use noe::DataLayout;\n\n");
 
@@ -56,7 +57,7 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                 let (min, max) = activation_range(&activation);
 
                 body.push_str(&format!(
-                    "const LINEAR_{idx}: Linear = Linear::new(\n    \
+                    "static mut LINEAR_{idx}: Linear = Linear::new(\n    \
                      include_bytes!(\"{folder}/{weight}\"),\n    \
                      {},\n    \
                      {in_features},\n    \
@@ -91,7 +92,7 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                 let (min, max) = activation_range(activation);
 
                 body.push_str(&format!(
-                    "const CONV1D_{idx}: Conv1d = Conv1d::new(\n    \
+                    "static mut CONV1D_{idx}: Conv1d = Conv1d::new(\n    \
                      include_bytes!(\"{folder}/{weight}\"),\n    \
                      {},\n    \
                      {input_shape:?},\n    \
@@ -132,7 +133,7 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                 let (min, max) = activation_range(activation);
 
                 body.push_str(&format!(
-                    "const CONV2D_{idx}: Conv2d = Conv2d::new(\n    \
+                    "static mut CONV2D_{idx}: Conv2d = Conv2d::new(\n    \
                      include_bytes!(\"{folder}/{weight}\"),\n    \
                      {},\n    \
                      {input_shape:?},\n    \
@@ -173,7 +174,7 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                     (input_shape.1, input_shape.0, output_shape.0)
                 };
                 body.push_str(&format!(
-                    "const MAXPOOL1D_{idx}: MaxPool1d = MaxPool1d::new(\n    \
+                    "static mut MAXPOOL1D_{idx}: MaxPool1d = MaxPool1d::new(\n    \
                      {input_shape:?},\n    \
                      {output_shape:?},\n    \
                      {channel},\n    \
@@ -212,7 +213,7 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                 };
 
                 body.push_str(&format!(
-                    "const MAXPOOL2D_{idx}: MaxPool2d = MaxPool2d::new(\n    \
+                    "static mut MAXPOOL2D_{idx}: MaxPool2d = MaxPool2d::new(\n    \
                      {input_shape:?},\n    \
                      {output_shape:?},\n    \
                      {channel},\n    \
@@ -237,7 +238,7 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                 let (min, max) = activation_range(activation);
 
                 body.push_str(&format!(
-                    "const BATCHNORM2D_{idx}: BatchNorm2d = BatchNorm2d::new(\n    \
+                    "static mut BATCHNORM2D_{idx}: BatchNorm2d = BatchNorm2d::new(\n    \
                      {shape:?},\n    \
                      include_bytes!(\"{folder}/{mul}\"),\n    \
                      include_bytes!(\"{folder}/{add}\"),\n    \
@@ -262,7 +263,7 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                 let (min, max) = activation_range(activation);
 
                 body.push_str(&format!(
-                    "const ADD_{idx}: Add = Add::new(\n    \
+                    "static mut ADD_{idx}: Add = Add::new(\n    \
                      {A_shape:?},\n    \
                      {B_shape:?},\n    \
                      {output_shape:?},\n    \
@@ -290,23 +291,24 @@ fn gen_model_run(layers: &Vec<Layer>, layout: DataLayout) -> String {
     let mut body = String::new();
     body.push_str("pub fn model_run(input: &[i8], output: &mut [i8]) {\n");
     body.push_str("    use core::ptr::copy_nonoverlapping;\n\n");
+    body.push_str("    unsafe {\n");
 
     layers.iter().enumerate().for_each(|(idx, layer)| {
         match layer {
             Input { size, off } => body.push_str(&format!(
-                "    unsafe {{ copy_nonoverlapping(input.as_ptr(), memory_ptr({off}), {size}) }};\n"
+                "\t\tcopy_nonoverlapping(input.as_ptr(), memory_ptr({off}), {size});\n"
             )),
-            Linear { .. } => body.push_str(&format!("    LINEAR_{idx}.forward_{layout}();")),
-            Conv1D { .. } => body.push_str(&format!("    CONV1D_{idx}.forward_{layout}();")),
-            Conv2D { .. } => body.push_str(&format!("    CONV2D_{idx}.forward_{layout}();")),
-            MaxPool1D { .. } => body.push_str(&format!("    MAXPOOL1D_{idx}.forward_{layout}();")),
-            MaxPool2D { .. } => body.push_str(&format!("    MAXPOOL2D_{idx}.forward_{layout}();")),
+            Linear { .. } => body.push_str(&format!("\t\tLINEAR_{idx}.forward_{layout}();")),
+            Conv1D { .. } => body.push_str(&format!("\t\tCONV1D_{idx}.forward_{layout}();")),
+            Conv2D { .. } => body.push_str(&format!("\t\tCONV2D_{idx}.forward_{layout}();")),
+            MaxPool1D { .. } => body.push_str(&format!("\t\tMAXPOOL1D_{idx}.forward_{layout}();")),
+            MaxPool2D { .. } => body.push_str(&format!("\t\tMAXPOOL2D_{idx}.forward_{layout}();")),
             BatchNorm2d { .. } => {
-                body.push_str(&format!("    BATCHNORM2D_{idx}.forward_{layout}();"))
+                body.push_str(&format!("\t\tBATCHNORM2D_{idx}.forward_{layout}();"))
             }
-            Add { .. } => body.push_str(&format!("    ADD_{idx}.forward_{layout}();")),
+            Add { .. } => body.push_str(&format!("\t\tADD_{idx}.forward_{layout}();")),
             Output { size, off } => body.push_str(&format!(
-                "    unsafe {{ copy_nonoverlapping(memory_ptr({}), output.as_mut_ptr(), {}) }}\n",
+                "\n\t\tcopy_nonoverlapping(memory_ptr({}), output.as_mut_ptr(), {})",
                 off, size
             )),
         }
@@ -314,6 +316,7 @@ fn gen_model_run(layers: &Vec<Layer>, layout: DataLayout) -> String {
         body.push('\n');
     });
 
+    body.push_str("\t}\n");
     body.push_str("}\n");
 
     body

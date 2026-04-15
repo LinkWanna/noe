@@ -25,7 +25,7 @@ fn bench_maxpool2d(c: &mut Criterion) {
         let input = leak_i8_slice(make_i8_data(input_len, 41));
         let output = leak_i8_slice(vec![0; output_len]);
 
-        let module = MaxPool2d::new(
+        let mut module = MaxPool2d::new(
             (in_h, in_w),
             (out_h, out_w),
             channel,

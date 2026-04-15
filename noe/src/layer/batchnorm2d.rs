@@ -59,7 +59,7 @@ impl BatchNorm2d {
 }
 
 impl Module for BatchNorm2d {
-    fn forward_chw(&self) {
+    fn forward_chw(&mut self) {
         unsafe {
             batchnorm2d_chw_i8(
                 self.data,
@@ -72,7 +72,7 @@ impl Module for BatchNorm2d {
         }
     }
 
-    fn forward_hwc(&self) {
+    fn forward_hwc(&mut self) {
         unsafe {
             batchnorm2d_hwc_i8(
                 self.data,

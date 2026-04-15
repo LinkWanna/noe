@@ -98,7 +98,7 @@ impl Conv2d {
 }
 
 impl Module for Conv2d {
-    fn forward_chw(&self) {
+    fn forward_chw(&mut self) {
         unsafe {
             conv2d_chw_i8(
                 self.input,
@@ -118,7 +118,7 @@ impl Module for Conv2d {
         }
     }
 
-    fn forward_hwc(&self) {
+    fn forward_hwc(&mut self) {
         unsafe {
             conv2d_hwc_i8(
                 self.input,

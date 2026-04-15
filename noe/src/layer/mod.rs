@@ -18,6 +18,6 @@ pub use maxpool1d::*;
 pub use maxpool2d::*;
 
 pub trait Module {
-    fn forward_chw(&self);
-    fn forward_hwc(&self);
+    fn forward_chw(&mut self);
+    fn forward_hwc(&mut self);
 }

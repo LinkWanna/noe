@@ -15,7 +15,7 @@ fn bench_conv1d(c: &mut Criterion) {
         let weight = leak_i8_slice(make_i8_data(out_c * in_c * kernel_size, 17));
         let bias = leak_i8_slice(make_i8_data(out_c, 19));
         let output = leak_i8_slice(vec![0; out_c * out_len]);
-        let module = Conv1d::new(
+        let mut module = Conv1d::new(
             i8_bytes(weight),
             Some(i8_bytes(bias)),
             (in_c, in_len),

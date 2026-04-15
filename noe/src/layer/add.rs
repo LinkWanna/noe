@@ -9,11 +9,10 @@ use crate::{
 pub struct Add {
     B_shift: usize,
     out_shift: usize,
-    A: *const i8,
-    B: *const i8,
-    output: *mut i8,
+    A: &'static [i8],
+    B: &'static [i8],
+    output: &'static mut [i8],
     activation: ActivationParams,
-    size: usize,
 }
 
 impl Add {
@@ -47,6 +46,10 @@ impl Add {
         };
         let size = output_shape.0 * output_shape.1 * output_shape.2;
 
+        let A = unsafe { core::slice::from_raw_parts(A, size) };
+        let B = unsafe { core::slice::from_raw_parts(B, size) };
+        let output = unsafe { core::slice::from_raw_parts_mut(output, size) };
+
         Self {
             B_shift,
             out_shift,
@@ -54,27 +57,23 @@ impl Add {
             B,
             output,
             activation,
-            size,
         }
     }
 }
 
 impl Module for Add {
-    fn forward_chw(&self) {
-        unsafe {
-            add_i8(
-                self.A,
-                self.B,
-                self.output,
-                self.B_shift,
-                self.out_shift,
-                self.size,
-                self.activation,
-            );
-        }
+    fn forward_chw(&mut self) {
+        add_i8(
+            self.A,
+            self.B,
+            self.output,
+            self.B_shift,
+            self.out_shift,
+            self.activation,
+        );
     }
 
-    fn forward_hwc(&self) {
+    fn forward_hwc(&mut self) {
         self.forward_chw();
     }
 }

@@ -1,6 +1,9 @@
 mod common;
 
-use common::{ACT_MAX, ACT_MIN, i8_bytes, i16_bytes, leak_i8_slice, leak_i16_slice, make_i8_data, make_i16_data};
+use common::{
+    ACT_MAX, ACT_MIN, i8_bytes, i16_bytes, leak_i8_slice, leak_i16_slice, make_i8_data,
+    make_i16_data,
+};
 use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use noe::DataLayout;
 use noe::layer::{Conv2d, Module};
@@ -64,7 +67,7 @@ fn bench_conv2d(c: &mut Criterion) {
         let output = leak_i8_slice(vec![0; output_len]);
         let tmp = leak_i8_slice(vec![0; tmp_len]);
 
-        let module = Conv2d::new(
+        let mut module = Conv2d::new(
             i8_bytes(weight),
             Some(i16_bytes(bias)),
             input_shape,

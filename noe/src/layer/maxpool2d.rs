@@ -69,7 +69,7 @@ impl MaxPool2d {
 }
 
 impl Module for MaxPool2d {
-    fn forward_chw(&self) {
+    fn forward_chw(&mut self) {
         unsafe {
             maxpool2d_chw_i8(
                 self.input,
@@ -85,7 +85,7 @@ impl Module for MaxPool2d {
         }
     }
 
-    fn forward_hwc(&self) {
+    fn forward_hwc(&mut self) {
         unsafe {
             maxpool2d_hwc_i8(
                 self.input,

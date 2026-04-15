@@ -59,7 +59,7 @@ impl Linear {
 }
 
 impl Module for Linear {
-    fn forward_chw(&self) {
+    fn forward_chw(&mut self) {
         unsafe {
             linear_i8(
                 self.input,
@@ -74,7 +74,7 @@ impl Module for Linear {
         }
     }
 
-    fn forward_hwc(&self) {
+    fn forward_hwc(&mut self) {
         self.forward_chw();
     }
 }

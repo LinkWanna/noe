@@ -13,7 +13,7 @@ fn bench_maxpool1d(c: &mut Criterion) {
         let output_shape = (input_shape + 2 * padding - kernel_size) / stride + 1;
         let input = leak_i8_slice(make_i8_data(channel * input_shape, 37));
         let output = leak_i8_slice(vec![0; channel * output_shape]);
-        let module = MaxPool1d::new(
+        let mut module = MaxPool1d::new(
             input_shape,
             output_shape,
             channel,

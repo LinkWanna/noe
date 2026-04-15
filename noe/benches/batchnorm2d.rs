@@ -1,6 +1,9 @@
 mod common;
 
-use common::{ACT_MAX, ACT_MIN, i8_bytes, i16_bytes, leak_i8_slice, leak_i16_slice, make_i8_data, make_i16_data};
+use common::{
+    ACT_MAX, ACT_MIN, i8_bytes, i16_bytes, leak_i8_slice, leak_i16_slice, make_i8_data,
+    make_i16_data,
+};
 use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use noe::DataLayout;
 use noe::layer::{BatchNorm2d, Module};
@@ -19,7 +22,7 @@ fn bench_batchnorm2d(c: &mut Criterion) {
         let mul = leak_i8_slice(make_i8_data(channel, 53));
         let add = leak_i16_slice(make_i16_data(channel, 59));
 
-        let module = BatchNorm2d::new(
+        let mut module = BatchNorm2d::new(
             shape,
             i8_bytes(mul),
             i16_bytes(add),

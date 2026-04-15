@@ -14,7 +14,7 @@ fn bench_linear(c: &mut Criterion) {
         let weight = leak_i8_slice(make_i8_data(in_features * out_features, 5));
         let bias = leak_i16_slice(make_i16_data(out_features, 9));
         let output = leak_i8_slice(vec![0; out_features]);
-        let module = Linear::new(
+        let mut module = Linear::new(
             i8_bytes(weight),
             Some(i16_bytes(bias)),
             in_features,

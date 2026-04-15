@@ -10,7 +10,7 @@ fn bench_add(c: &mut Criterion) {
         let a = leak_i8_slice(make_i8_data(size, 1));
         let b = leak_i8_slice(make_i8_data(size, 7));
         let output = leak_i8_slice(vec![0; size]);
-        let module = Add::new(
+        let mut module = Add::new(
             (1, 1, size),
             (1, 1, size),
             (1, 1, size),

@@ -53,7 +53,7 @@ impl MaxPool1d {
 }
 
 impl Module for MaxPool1d {
-    fn forward_chw(&self) {
+    fn forward_chw(&mut self) {
         unsafe {
             maxpool1d_chw_i8(
                 self.input,
@@ -69,7 +69,7 @@ impl Module for MaxPool1d {
         }
     }
 
-    fn forward_hwc(&self) {
+    fn forward_hwc(&mut self) {
         todo!("Forward HWC is not implemented yet. Please use forward_chw for now.")
     }
 }
