@@ -1,11 +1,9 @@
 use defmt::info;
 use embassy_stm32::i2c::{self, Master};
 use embassy_stm32::mode::Async;
-use embassy_time::{Delay, Duration, Ticker, Timer};
-use mpu6050_dmp::quaternion::Quaternion;
+use embassy_time::{Delay, Duration, Ticker};
+use mpu6050_dmp::calibration::CalibrationParameters;
 use mpu6050_dmp::sensor_async::Mpu6050;
-use mpu6050_dmp::yaw_pitch_roll::YawPitchRoll;
-use mpu6050_dmp::{address::Address, calibration::CalibrationParameters, motion::MotionConfig};
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 pub enum Mpu6050State {
@@ -42,7 +40,10 @@ pub async fn mpu6050_init(sensor: &mut Mpu6050<i2c::I2c<'static, Async, Master>>
         .await
         .unwrap();
 
-    sensor.set_gyro_full_scale(mpu6050_dmp::gyro::GyroFullScale::Deg500);
+    sensor
+        .set_gyro_full_scale(mpu6050_dmp::gyro::GyroFullScale::Deg500)
+        .await
+        .unwrap();
 
     // Configure DLPF for maximum sensitivity
     sensor

@@ -107,7 +107,7 @@ async fn main(_spawner: Spawner) {
     let mut i2c_config = i2c::Config::default();
     i2c_config.frequency = khz(400);
     i2c_config.gpio_speed = gpio::Speed::VeryHigh;
-    let mut i2c = i2c::I2c::new(p.I2C1, scl, sda, p.DMA1_CH6, p.DMA1_CH7, Irqs, i2c_config);
+    let i2c = i2c::I2c::new(p.I2C1, scl, sda, p.DMA1_CH6, p.DMA1_CH7, Irqs, i2c_config);
     let mut mpu6050 = Mpu6050::new(i2c, Address::default()).await.unwrap();
 
     mpu6050_init(&mut mpu6050).await;

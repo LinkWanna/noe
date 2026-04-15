@@ -1,4 +1,5 @@
 [workspace]
+resolver = "3"
 members = [
     "noe",
     "noe-util",
@@ -9,7 +10,15 @@ members = [
     "examples/gesture-stm32f103c8",
     "examples/kws",
 ]
-resolver = "3"
+default-members = [
+    "noe",
+    "noe-util",
+    "examples/mlp",
+    "examples/lenet",
+    "examples/cnn",
+    "examples/gesture-host",
+    "examples/kws"
+]
 
 [workspace.package]
 authors = ["LinkWanna <lillluckenwp590@gmail.com>"]

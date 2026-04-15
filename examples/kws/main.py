@@ -89,7 +89,7 @@ def main():
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--dataset", type=str, default="/path/to/FashionMNIST")
+    parser.add_argument("--dataset", type=str, default="/path/to/SpeechCommands")
     parser.add_argument("--save-dir", type=str, default="model/output")
     parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint to resume from")
     parser.add_argument("--skip-train", default=False, action="store_true", help="Whether to skip training")
