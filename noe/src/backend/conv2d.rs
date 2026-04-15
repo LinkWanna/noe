@@ -146,13 +146,18 @@ pub unsafe fn conv2d_hwc_i8(
 
                     // vector: tmp (1 x patch_len)
                     // matrix: group_weight (out_c_per_group x patch_len)
+                    let weight_view =
+                        core::slice::from_raw_parts(group_weight, out_c_per_group * patch_len);
+                    let vector_view = core::slice::from_raw_parts(tmp as *const i8, patch_len);
+                    let bias_view =
+                        group_bias.map(|b| core::slice::from_raw_parts(b, out_c_per_group));
+                    let output_view = core::slice::from_raw_parts_mut(out_base, out_c_per_group);
+
                     mat_vec_mul_i8(
-                        group_weight,
-                        tmp,
-                        group_bias,
-                        out_base,
-                        patch_len,
-                        out_c_per_group,
+                        weight_view,
+                        vector_view,
+                        bias_view,
+                        output_view,
                         out_shift,
                         activation,
                     );

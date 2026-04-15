@@ -1,5 +1,5 @@
 [package]
-name = "gesture-stm32f103c8"
+name = "benches-stm32f103c8"
 authors.workspace = true
 license.workspace = true
 version.workspace = true
@@ -30,11 +30,16 @@ mpu6050-dmp = { version = "0.6.1", features = ["async"] }
 [build-dependencies]
 noe-util = { path = "../../noe-util" }
 
+[features]
+default = ["add", "linear"]
+add = []
+linear = []
+
 [profile.dev]
 opt-level = "s"
 
 [profile.release]
-opt-level = "z"
+opt-level = 3
 debug = false
 codegen-units = 1
 overflow-checks = false

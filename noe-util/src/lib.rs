@@ -9,12 +9,14 @@ mod types;
 mod utils;
 
 /// generate the declaration code for the model
-fn gen_declare() -> String {
+fn gen_declare(align: usize) -> String {
     let mut body = String::new();
     body.push_str("#![allow(unused)]\n");
     body.push_str("#![allow(static_mut_refs)]\n\n");
     body.push_str("use noe::layer::*;\n");
     body.push_str("use noe::DataLayout;\n\n");
+    body.push_str(&format!("#[repr(align({align}))]\n"));
+    body.push_str("pub struct Aligned<T: ?Sized>(pub T);\n\n");
 
     body
 }
@@ -23,7 +25,7 @@ fn gen_declare() -> String {
 fn gen_memory_pool(size: usize) -> String {
     let mut body = String::new();
     body.push_str(&format!("const MEMORY_SIZE: usize = {};\n", size));
-    body.push_str("static mut MEMORY: [u8; MEMORY_SIZE] = [0; MEMORY_SIZE];\n\n");
+    body.push_str("static mut MEMORY: Aligned<[u8; MEMORY_SIZE]> = Aligned([0; MEMORY_SIZE]);\n\n");
 
     body.push_str("const fn memory_ptr(off: usize) -> *mut i8 {\n");
     body.push_str("    assert!(off < MEMORY_SIZE);\n");
@@ -55,10 +57,25 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                 output_off,
             } => {
                 let (min, max) = activation_range(&activation);
+                let weight_size = in_features * out_features;
+                let bias_size = out_features * 2;
 
                 body.push_str(&format!(
+                    "static LINEAR_{idx}_WEIGHT: Aligned<[u8; {weight_size}]> = Aligned(*include_bytes!(\n\t\
+                        \"{folder}/{weight}\"\n\
+                    ));\n",
+                ));
+
+                if let Some(filename) = bias {
+                    body.push_str(&format!(
+                        "static LINEAR_{idx}_BIAS: Aligned<[u8; {bias_size}]> = Aligned(*include_bytes!(\n\t\
+                            \"{folder}/{filename}\"\n\
+                        ));\n",
+                    ));
+                }
+                body.push_str(&format!(
                     "static mut LINEAR_{idx}: Linear = Linear::new(\n    \
-                     include_bytes!(\"{folder}/{weight}\"),\n    \
+                     &LINEAR_{idx}_WEIGHT.0,\n    \
                      {},\n    \
                      {in_features},\n    \
                      {out_features},\n    \
@@ -67,8 +84,8 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                      memory_ptr({output_off}),\n    \
                      {min},\n    \
                      {max},\n);\n",
-                    if let Some(bias_path) = bias {
-                        format!("Some(include_bytes!(\"{folder}/{bias_path}\"))")
+                    if bias.is_some() {
+                        format!("Some(&LINEAR_{idx}_BIAS.0)")
                     } else {
                         "None".to_string()
                     }
@@ -131,11 +148,36 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                 tmp_off,
             } => {
                 let (min, max) = activation_range(activation);
+                let (weight_size, bias_size) = match layout {
+                    DataLayout::CHW => {
+                        let weight_size = (output_shape.0 * input_shape.0 * kernel_size.0 * kernel_size.1) / groups;
+                        let bias_size = output_shape.0 * 2;
+                        (weight_size, bias_size)
+                    }
+                    DataLayout::HWC => {
+                         let weight_size = (output_shape.2 * input_shape.2 * kernel_size.0 * kernel_size.1) / groups;
+                         let bias_size = output_shape.2 * 2;
+                         (weight_size, bias_size)
+                    }
+                };
+
+                body.push_str(&format!(
+                    "static CONV2D_{idx}_WEIGHT: Aligned<[u8; {weight_size}]> = Aligned(*include_bytes!(\n\t\
+                        \"{folder}/{weight}\"\n\
+                    ));\n",
+                ));
+                if let Some(filename) = bias {
+                    body.push_str(&format!(
+                        "static CONV2D_{idx}_BIAS: Aligned<[u8; {bias_size}]> = Aligned(*include_bytes!(\n\t\
+                            \"{folder}/{filename}\"\n\
+                        ));\n",
+                    ));
+                }
 
                 body.push_str(&format!(
                     "static mut CONV2D_{idx}: Conv2d = Conv2d::new(\n    \
-                     include_bytes!(\"{folder}/{weight}\"),\n    \
-                     {},\n    \
+                    &CONV2D_{idx}_WEIGHT.0,\n    \
+                    {},\n    \
                      {input_shape:?},\n    \
                      {output_shape:?},\n    \
                      {kernel_size:?},\n    \
@@ -150,11 +192,11 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                      {min},\n    \
                      {max},\n    \
                      DataLayout::{layout:?},\n);\n",
-                    if let Some(bias_path) = bias {
-                        format!("Some(include_bytes!(\"{folder}/{bias_path}\"))")
-                    } else {
-                        "None".to_string()
-                    }
+                     if bias.is_some() {
+                         format!("Some(&CONV2D_{idx}_BIAS.0)")
+                     } else {
+                         "None".to_string()
+                     }
                 ));
             }
             MaxPool1D {
@@ -236,12 +278,26 @@ fn gen_layers(layers: &Vec<Layer>, folder: &str, layout: DataLayout) -> String {
                 off,
             } => {
                 let (min, max) = activation_range(activation);
+                let size = match layout {
+                    DataLayout::CHW => shape.0,
+                    DataLayout::HWC => shape.2,
+                };
 
+                body.push_str(&format!(
+                    "static BATCHNORM2D_{idx}_MUL: Aligned<[u8; {size}]> = Aligned(*include_bytes!(\n\t\
+                        \"{folder}/{mul}\"\n\
+                    ));\n",
+                ));
+                body.push_str(&format!(
+                    "static BATCHNORM2D_{idx}_ADD: Aligned<[u8; {size} * 2]> = Aligned(*include_bytes!(\n\t\
+                        \"{folder}/{add}\"\n\
+                    ));\n",
+                ));
                 body.push_str(&format!(
                     "static mut BATCHNORM2D_{idx}: BatchNorm2d = BatchNorm2d::new(\n    \
                      {shape:?},\n    \
-                     include_bytes!(\"{folder}/{mul}\"),\n    \
-                     include_bytes!(\"{folder}/{add}\"),\n    \
+                     &BATCHNORM2D_{idx}_MUL.0,\n    \
+                     &BATCHNORM2D_{idx}_ADD.0,\n    \
                      {out_shift},\n    \
                      memory_ptr({off}),\n    \
                      {min},\n    \
@@ -338,7 +394,7 @@ pub fn process_model(folder: &str, target: &str) {
     let layout = config.layout; // 布局格式
 
     // 3. generate declaration code
-    body.push_str(&gen_declare());
+    body.push_str(&gen_declare(4));
 
     // 4. generate memory pool code
     body.push_str(&gen_memory_pool(config.memory));

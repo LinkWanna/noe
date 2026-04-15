@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "noe",
     "noe-util",
+    "examples/benches-stm32f103c8",
     "examples/mlp",
     "examples/lenet",
     "examples/cnn",

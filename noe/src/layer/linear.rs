@@ -5,13 +5,11 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Linear {
-    weight: &'static [u8],
-    bias: Option<&'static [u8]>,
-    in_features: usize,
-    out_features: usize,
+    weight: &'static [i8],
+    bias: Option<&'static [i16]>,
     out_shift: isize,
-    input: *const i8,
-    output: *mut i8,
+    input: &'static [i8],
+    output: &'static mut [i8],
     activation: ActivationParams,
 }
 
@@ -45,11 +43,17 @@ impl Linear {
             max: activation_max,
         };
 
+        let weight = unsafe { core::slice::from_raw_parts(weight.as_ptr().cast(), weight.len()) };
+        let bias = match bias {
+            Some(b) => Some(unsafe { core::slice::from_raw_parts(b.as_ptr().cast(), b.len() / 2) }),
+            None => None,
+        };
+        let input = unsafe { core::slice::from_raw_parts(input, in_features) };
+        let output = unsafe { core::slice::from_raw_parts_mut(output, out_features) };
+
         Linear {
             weight,
             bias,
-            in_features,
-            out_features,
             out_shift,
             input,
             output,
@@ -60,18 +64,14 @@ impl Linear {
 
 impl Module for Linear {
     fn forward_chw(&mut self) {
-        unsafe {
-            linear_i8(
-                self.input,
-                self.weight.as_ptr().cast(),
-                self.bias.map(|b| b.as_ptr().cast()),
-                self.output,
-                self.in_features,
-                self.out_features,
-                self.out_shift,
-                self.activation,
-            );
-        }
+        linear_i8(
+            self.input,
+            self.weight,
+            self.bias,
+            self.output,
+            self.out_shift,
+            self.activation,
+        );
     }
 
     fn forward_hwc(&mut self) {
