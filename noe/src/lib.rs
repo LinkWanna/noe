@@ -14,6 +14,7 @@ mod backend;
 mod basic;
 pub mod layer;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DataLayout {
     CHW,
     HWC,

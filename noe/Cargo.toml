@@ -14,3 +14,34 @@ categories.workspace = true
 default = ["truncate"]
 
 truncate = []
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "add"
+harness = false
+
+[[bench]]
+name = "linear"
+harness = false
+
+[[bench]]
+name = "conv1d"
+harness = false
+
+[[bench]]
+name = "conv2d"
+harness = false
+
+[[bench]]
+name = "maxpool1d"
+harness = false
+
+[[bench]]
+name = "maxpool2d"
+harness = false
+
+[[bench]]
+name = "batchnorm2d"
+harness = false
