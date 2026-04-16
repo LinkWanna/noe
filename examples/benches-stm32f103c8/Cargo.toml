@@ -31,9 +31,10 @@ mpu6050-dmp = { version = "0.6.1", features = ["async"] }
 noe-util = { path = "../../noe-util" }
 
 [features]
-default = ["add", "linear"]
+default = ["add", "linear", "batchnorm"]
 add = []
 linear = []
+batchnorm = []
 
 [profile.dev]
 opt-level = "s"

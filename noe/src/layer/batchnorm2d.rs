@@ -9,11 +9,11 @@ use crate::{
 
 #[derive(Debug)]
 pub struct BatchNorm2d {
-    shape: (usize, usize, usize),
-    mul: &'static [u8],
-    add: &'static [u8],
+    shape: (usize, usize),
+    mul: &'static [i8],
+    add: &'static [i16],
     out_shift: isize,
-    data: *mut i8,
+    data: &'static mut [i8],
     activation: ActivationParams,
 }
 
@@ -29,7 +29,7 @@ impl BatchNorm2d {
         layout: DataLayout,
     ) -> Self {
         // sanity check
-        let (ch, _, _) = match layout {
+        let (ch, h, w) = match layout {
             DataLayout::CHW => shape,
             DataLayout::HWC => {
                 let (h, w, ch) = shape;
@@ -47,8 +47,12 @@ impl BatchNorm2d {
             max: activation_max,
         };
 
+        let mul = unsafe { core::slice::from_raw_parts(mul.as_ptr() as *const i8, ch) };
+        let add = unsafe { core::slice::from_raw_parts(add.as_ptr() as *const i16, ch) };
+        let data = unsafe { core::slice::from_raw_parts_mut(data, ch * h * w) };
+
         Self {
-            shape,
+            shape: (h, w),
             mul,
             add,
             out_shift,
@@ -60,28 +64,24 @@ impl BatchNorm2d {
 
 impl Module for BatchNorm2d {
     fn forward_chw(&mut self) {
-        unsafe {
-            batchnorm2d_chw_i8(
-                self.data,
-                self.mul.as_ptr().cast(),
-                self.add.as_ptr().cast(),
-                self.shape,
-                self.out_shift,
-                self.activation,
-            );
-        }
+        batchnorm2d_chw_i8(
+            self.data,
+            self.mul,
+            self.add,
+            self.shape,
+            self.out_shift,
+            self.activation,
+        );
     }
 
     fn forward_hwc(&mut self) {
-        unsafe {
-            batchnorm2d_hwc_i8(
-                self.data,
-                self.mul.as_ptr().cast(),
-                self.add.as_ptr().cast(),
-                self.shape,
-                self.out_shift,
-                self.activation,
-            );
-        }
+        batchnorm2d_hwc_i8(
+            self.data,
+            self.mul,
+            self.add,
+            self.shape,
+            self.out_shift,
+            self.activation,
+        );
     }
 }

@@ -10,8 +10,8 @@ pub fn mat_vec_mul_i8(
 ) {
     let in_features = vector.len();
     let out_features = output.len();
-    assert!(matrix.len() == in_features * out_features);
-    assert!(bias.map_or(true, |b| b.len() == out_features));
+    assert!(matrix.len() >= in_features * out_features);
+    assert!(bias.map_or(true, |b| b.len() >= out_features));
 
     let rounding = rounding!(out_shift);
     let min = activation.min as isize;
