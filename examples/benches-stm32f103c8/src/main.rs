@@ -6,6 +6,8 @@
 mod add;
 #[cfg(feature = "batchnorm")]
 mod batchnorm2d;
+#[cfg(feature = "conv2d")]
+mod conv2d;
 #[cfg(feature = "linear")]
 mod linear;
 
@@ -95,10 +97,18 @@ async fn main(_spawner: Spawner) {
     #[cfg(feature = "batchnorm")]
     batchnorm2d::run();
 
+    #[cfg(feature = "conv2d")]
+    conv2d::run();
+
     #[cfg(feature = "linear")]
     linear::run();
 
-    #[cfg(not(any(feature = "add", feature = "batchnorm", feature = "linear")))]
+    #[cfg(not(any(
+        feature = "add",
+        feature = "batchnorm",
+        feature = "conv2d",
+        feature = "linear"
+    )))]
     info!("No benchmark feature enabled");
 
     info!("Benchmarks completed");

@@ -1,10 +1,10 @@
 use crate::{backend::ActivationParams, basic::mat_vec_mul::mat_vec_mul_i8};
 
-pub unsafe fn conv2d_chw_i8(
-    input: *const i8,                    // shape: [in_c, in_h, in_w]
-    weight: *const i8,                   // shape: [out_c, in_c/groups, kernel_h, kernel_w]
-    bias: Option<*const i16>,            // shape: [out_c]
-    output: *mut i8,                     // shape: [out_c, out_h, out_w]
+pub fn conv2d_chw_i8(
+    input: &[i8],                        // shape: [in_c, in_h, in_w]
+    weight: &[i8],                       // shape: [out_c, in_c/groups, kernel_h, kernel_w]
+    bias: Option<&[i16]>,                // shape: [out_c]
+    output: &mut [i8],                   // shape: [out_c, out_h, out_w]
     input_shape: (usize, usize, usize),  // (in_c, in_h, in_w)
     output_shape: (usize, usize, usize), // (out_c, out_h, out_w)
     kernel_size: (usize, usize),         // (kernel_h, kernel_w)
@@ -18,74 +18,72 @@ pub unsafe fn conv2d_chw_i8(
     let (in_c, in_h, in_w) = input_shape;
     let (out_c, out_h, out_w) = output_shape;
     let (kernel_h, kernel_w) = kernel_size;
-    let (pad_h, pad_w) = padding;
-    let (stride_h, stride_w) = stride;
-    let (dilation_h, dilation_w) = dilation;
+    let (ph, pw) = padding;
+    let (sh, sw) = stride;
+    let (dh, dw) = dilation;
 
     let in_c_per_group = in_c / groups;
     let out_c_per_group = out_c / groups;
 
-    for oc in 0..out_c {
+    let rounding = rounding!(out_shift);
+    let min = activation.min as isize;
+    let max = activation.max as isize;
+
+    for (oc, out_channel) in output.chunks_mut(out_h * out_w).enumerate() {
         let group_id = oc / out_c_per_group;
         let ic_start = group_id * in_c_per_group;
         let ic_end = ic_start + in_c_per_group;
 
-        for oh in 0..out_h {
-            for ow in 0..out_w {
-                let mut acc = if let Some(bias_ptr) = bias {
-                    unsafe { *bias_ptr.add(oc) as isize }
-                } else {
-                    0
-                };
+        let b_val = bias.map(|b| b[oc] as isize).unwrap_or(0);
+
+        for (oh, out_row) in out_channel.chunks_mut(out_w).enumerate() {
+            let base_h = oh * sh;
+            for (ow, out_val) in out_row.iter_mut().enumerate() {
+                let base_w = ow * sw;
+                let mut acc = b_val;
 
                 for kh in 0..kernel_h {
+                    let dilated_kh = kh * dh;
+                    let ih = base_h as isize - ph as isize + dilated_kh as isize;
+
                     for kw in 0..kernel_w {
-                        // Apply dilation: effective offset in input
-                        let dilated_kh = kh * dilation_h;
-                        let dilated_kw = kw * dilation_w;
+                        let dilated_kw = kw * dw;
+                        let iw = base_w as isize - pw as isize + dilated_kw as isize;
 
-                        let ih = (oh * stride_h) as isize - pad_h as isize + dilated_kh as isize;
-                        let iw = (ow * stride_w) as isize - pad_w as isize + dilated_kw as isize;
-
-                        if ih < 0 || ih >= in_h as isize || iw < 0 || iw >= in_w as isize {
+                        if iw < 0 || iw >= in_w as isize || ih < 0 || ih >= in_h as isize {
                             continue;
                         }
 
                         let ih = ih as usize;
                         let iw = iw as usize;
 
-                        // Only iterate over input channels in the same group
                         for (local_ic, ic) in (ic_start..ic_end).enumerate() {
                             let input_idx = ic * in_h * in_w + ih * in_w + iw;
 
-                            // Weight layout: [out_c, in_c/groups, k_h, k_w]
                             let weight_idx = oc * (in_c_per_group * kernel_h * kernel_w)
                                 + local_ic * (kernel_h * kernel_w)
                                 + kh * kernel_w
                                 + kw;
 
-                            let inp = unsafe { *input.add(input_idx) } as isize;
-                            let w = unsafe { *weight.add(weight_idx) } as isize;
+                            let inp = input[input_idx] as isize;
+                            let w = weight[weight_idx] as isize;
                             acc += inp * w;
                         }
                     }
                 }
 
-                acc = (acc + rounding!(out_shift)) >> out_shift;
-                let out_val = acc.clamp(activation.min, activation.max) as i8;
-                let output_idx = (oc * out_h * out_w) + (oh * out_w) + ow;
-                unsafe { *output.add(output_idx) = out_val };
+                *out_val = ((acc + rounding) >> out_shift).clamp(min, max) as i8;
             }
         }
     }
 }
 
-pub unsafe fn conv2d_hwc_i8(
-    input: *const i8,                    // shape: [in_h, in_w, in_c]
-    weight: *const i8,                   // shape: [out_c, kernel_h, kernel_w, in_c/groups]
-    bias: Option<*const i16>,            // shape: [out_c]
-    output: *mut i8,                     // shape: [out_h, out_w, out_c]
-    tmp: *mut i8,                        // shape: [kernel_h * kernel_w * in_c/groups]
+pub fn conv2d_hwc_i8(
+    input: &[i8],                        // shape: [in_h, in_w, in_c]
+    weight: &[i8],                       // shape: [out_c, kernel_h, kernel_w, in_c/groups]
+    bias: Option<&[i16]>,                // shape: [out_c]
+    output: &mut [i8],                   // shape: [out_h, out_w, out_c]
+    tmp: &mut [i8],                      // shape: [kernel_h * kernel_w * in_c/groups]
     input_shape: (usize, usize, usize),  // (in_h, in_w, in_c)
     output_shape: (usize, usize, usize), // (out_h, out_w, out_c)
     kernel_size: (usize, usize),         // (kernel_h, kernel_w)
@@ -99,69 +97,72 @@ pub unsafe fn conv2d_hwc_i8(
     let (in_h, in_w, in_c) = input_shape;
     let (out_h, out_w, out_c) = output_shape;
     let (kernel_h, kernel_w) = kernel_size;
-    let (pad_h, pad_w) = padding;
-    let (stride_h, stride_w) = stride;
-    let (dilation_h, dilation_w) = dilation;
+    let (ph, pw) = padding;
+    let (sh, sw) = stride;
+    let (dh, dw) = dilation;
 
     let in_c_per_group = in_c / groups;
     let out_c_per_group = out_c / groups;
-
     let patch_len = kernel_h * kernel_w * in_c_per_group;
-    unsafe {
-        for g in 0..groups {
-            let group_input = input.add(g * in_c_per_group);
-            let group_weight = weight.add(g * out_c_per_group * patch_len);
-            let group_bias = bias.map(|b| b.add(g * out_c_per_group));
-            let group_output = output.add(g * out_c_per_group);
 
-            for oh in 0..out_h {
-                let base_h = oh * stride_h;
-                for ow in 0..out_w {
-                    let base_w = ow * stride_w;
+    for g in 0..groups {
+        // 计算当前组的输入、权重和偏置范围
+        let in_group_range = (g * in_c_per_group)..((g + 1) * in_c_per_group);
+        let weight_group_start = g * out_c_per_group * patch_len;
+        let weight_group_end = weight_group_start + out_c_per_group * patch_len;
+        let group_weight = &weight[weight_group_start..weight_group_end];
 
-                    // step 1: fill tmp with the current patch (with padding handling)
-                    let mut tmp_p = tmp;
-                    core::ptr::write_bytes(tmp_p, 0, patch_len); // clear tmp buffer
-                    for kh in 0..kernel_h {
-                        let ih = base_h as isize - pad_h as isize + (kh * dilation_h) as isize;
+        let group_bias = bias.map(|b| {
+            let start = g * out_c_per_group;
+            &b[start..start + out_c_per_group]
+        });
 
-                        for kw in 0..kernel_w {
-                            let iw = base_w as isize - pad_w as isize + (kw * dilation_w) as isize;
+        for oh in 0..out_h {
+            let base_h = oh * sh;
+            for ow in 0..out_w {
+                let base_w = ow * sw;
 
-                            if ih >= 0 && ih < in_h as isize && iw >= 0 && iw < in_w as isize {
-                                let base_offset = (ih as usize * in_w + iw as usize) * in_c;
-                                core::ptr::copy_nonoverlapping(
-                                    group_input.add(base_offset),
-                                    tmp_p,
-                                    in_c_per_group,
-                                );
-                            }
+                // Step 1: 填充 tmp 缓冲区（处理 Padding）
+                tmp.fill(0);
 
-                            tmp_p = tmp_p.add(in_c_per_group);
+                for kh in 0..kernel_h {
+                    let dilated_kh = kh * dh;
+                    let ih = base_h as isize - ph as isize + dilated_kh as isize;
+
+                    for kw in 0..kernel_w {
+                        let dilated_kw = kw * dw;
+                        let iw = base_w as isize - pw as isize + dilated_kw as isize;
+                        if ih < 0 || ih >= in_h as isize || iw < 0 || iw >= in_w as isize {
+                            continue;
                         }
+
+                        // 计算 tmp 中当前内核位置的偏移
+                        let tmp_offset = (kh * kernel_w + kw) * in_c_per_group;
+                        let tmp_slice = &mut tmp[tmp_offset..tmp_offset + in_c_per_group];
+
+                        // 计算 input 中对应位置和通道组的偏移
+                        let input_base = (ih as usize * in_w + iw as usize) * in_c;
+                        let input_slice = &input
+                            [input_base + in_group_range.start..input_base + in_group_range.end];
+
+                        tmp_slice.copy_from_slice(input_slice);
                     }
-
-                    // step 2: compute output for this position using vec_mat_mul
-                    let out_base = group_output.add((oh * out_w * out_c) + (ow * out_c));
-
-                    // vector: tmp (1 x patch_len)
-                    // matrix: group_weight (out_c_per_group x patch_len)
-                    let weight_view =
-                        core::slice::from_raw_parts(group_weight, out_c_per_group * patch_len);
-                    let vector_view = core::slice::from_raw_parts(tmp as *const i8, patch_len);
-                    let bias_view =
-                        group_bias.map(|b| core::slice::from_raw_parts(b, out_c_per_group));
-                    let output_view = core::slice::from_raw_parts_mut(out_base, out_c_per_group);
-
-                    mat_vec_mul_i8(
-                        weight_view,
-                        vector_view,
-                        bias_view,
-                        output_view,
-                        out_shift,
-                        activation,
-                    );
                 }
+
+                // Step 2: 计算输出
+                // 计算输出位置：HWC 布局下，通道是最后一位
+                let out_offset = (oh * out_w * out_c) + (ow * out_c) + (g * out_c_per_group);
+                let out_slice = &mut output[out_offset..out_offset + out_c_per_group];
+
+                // 调用矩阵相乘逻辑
+                mat_vec_mul_i8(
+                    group_weight,
+                    tmp,
+                    group_bias,
+                    out_slice,
+                    out_shift,
+                    activation,
+                );
             }
         }
     }

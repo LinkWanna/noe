@@ -9,8 +9,8 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Conv2d {
-    weight: &'static [u8],
-    bias: Option<&'static [u8]>,
+    weight: &'static [i8],
+    bias: Option<&'static [i16]>,
     input_shape: (usize, usize, usize),
     output_shape: (usize, usize, usize),
     kernel_size: (usize, usize),
@@ -19,9 +19,9 @@ pub struct Conv2d {
     dilation: (usize, usize),
     groups: usize,
     out_shift: isize,
-    input: *const i8,
-    output: *mut i8,
-    tmp: *mut i8,
+    input: &'static [i8],
+    output: &'static mut [i8],
+    tmp: &'static mut [i8],
     activation: ActivationParams,
 }
 
@@ -78,6 +78,15 @@ impl Conv2d {
             max: activation_max,
         };
 
+        let weight = unsafe { core::slice::from_raw_parts(weight.as_ptr().cast(), weight.len()) };
+        let bias = match bias {
+            Some(b) => Some(unsafe { core::slice::from_raw_parts(b.as_ptr().cast(), b.len() / 2) }),
+            None => None,
+        };
+        let input = unsafe { core::slice::from_raw_parts(input, ic * ih * iw) };
+        let output = unsafe { core::slice::from_raw_parts_mut(output, oc * oh * ow) };
+        let tmp = unsafe { core::slice::from_raw_parts_mut(tmp, kh * kw * (ic / groups)) };
+
         Self {
             weight,
             bias,
@@ -99,43 +108,39 @@ impl Conv2d {
 
 impl Module for Conv2d {
     fn forward_chw(&mut self) {
-        unsafe {
-            conv2d_chw_i8(
-                self.input,
-                self.weight.as_ptr().cast(),
-                self.bias.map(|b| b.as_ptr().cast()),
-                self.output,
-                self.input_shape,
-                self.output_shape,
-                self.kernel_size,
-                self.stride,
-                self.padding,
-                self.dilation,
-                self.groups,
-                self.out_shift,
-                self.activation,
-            );
-        }
+        conv2d_chw_i8(
+            self.input,
+            self.weight,
+            self.bias,
+            self.output,
+            self.input_shape,
+            self.output_shape,
+            self.kernel_size,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+            self.out_shift,
+            self.activation,
+        );
     }
 
     fn forward_hwc(&mut self) {
-        unsafe {
-            conv2d_hwc_i8(
-                self.input,
-                self.weight.as_ptr().cast(),
-                self.bias.map(|b| b.as_ptr().cast()),
-                self.output,
-                self.tmp,
-                self.input_shape,
-                self.output_shape,
-                self.kernel_size,
-                self.stride,
-                self.padding,
-                self.dilation,
-                self.groups,
-                self.out_shift,
-                self.activation,
-            );
-        }
+        conv2d_hwc_i8(
+            self.input,
+            self.weight,
+            self.bias,
+            self.output,
+            self.tmp,
+            self.input_shape,
+            self.output_shape,
+            self.kernel_size,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+            self.out_shift,
+            self.activation,
+        );
     }
 }
